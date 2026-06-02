@@ -44,7 +44,7 @@ function shouldUseDevProxy(apiBaseUrl: string) {
 }
 
 const API_BASE_URL = shouldUseDevProxy(configuredApiBaseUrl) ? "" : configuredApiBaseUrl;
-const SKIP_TUNNEL_WARNING = import.meta.env.VITE_SKIP_TUNNEL_WARNING === "true";
+const SKIP_TUNNEL_WARNING = import.meta.env.VITE_SKIP_TUNNEL_WARNING !== "false";
 export const SESSION_REFRESHED_EVENT = "flowtix:session-refreshed";
 const CSRF_COOKIE_NAME = "XSRF-TOKEN";
 const CSRF_HEADER_NAME = "X-CSRF-TOKEN";
