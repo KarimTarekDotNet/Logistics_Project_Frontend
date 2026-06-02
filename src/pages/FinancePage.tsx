@@ -13,10 +13,13 @@ export function FinancePage(props: {
   invoices: Invoice[];
   isPrivileged: boolean;
   isAdmin: boolean;
+  isUser: boolean;
   busy: boolean;
+  onlinePaymentInvoiceId?: string | null;
   onCreateInvoice: (event: FormEvent) => void;
   onLoadInvoices: () => void;
   onInvoiceStatus: (id: string, action: InvoiceStatusAction, payment?: InvoicePaymentRequest) => void;
+  onStartCardPayment: (invoice: Invoice) => void;
   onCancelInvoice: (id: string, reason: string) => void;
   onDeleteInvoice: (id: string) => void;
 }) {
@@ -26,10 +29,13 @@ export function FinancePage(props: {
     invoices,
     isPrivileged,
     isAdmin,
+    isUser,
     busy,
+    onlinePaymentInvoiceId,
     onCreateInvoice,
     onLoadInvoices,
     onInvoiceStatus,
+    onStartCardPayment,
     onCancelInvoice,
     onDeleteInvoice
   } = props;
@@ -191,6 +197,7 @@ export function FinancePage(props: {
                 const isPaid = status === "paid";
                 const isPartiallyPaid = status === "partiallypaid";
                 const canPay = isPrivileged && (isPending || isPartiallyPaid) && !isPaid && !isCancelled && !isRefunded && balance.remaining > 0;
+                const canPayOnline = isUser && !isPrivileged && (isPending || isPartiallyPaid) && !isPaid && !isCancelled && !isRefunded && balance.remaining > 0;
                 const canRefund = isPrivileged && (isPaid || isPartiallyPaid) && !isCancelled && !isRefunded;
                 const canCancel = (isDraft || isPending) && !isPaid && !isPartiallyPaid && !isCancelled && !isRefunded;
                 const paymentAmount = Number(paymentAmounts[invoice.id] ?? "");
@@ -250,18 +257,37 @@ export function FinancePage(props: {
                     </div>
 
                     <div className="payment-method-strip">
-                      <span>
-                        <CreditCard size={14} />
-                        Manual receipt
-                      </span>
-                      <span>
-                        <Banknote size={14} />
-                        Cash default
-                      </span>
-                      <span>
-                        <ReceiptText size={14} />
-                        Reference optional
-                      </span>
+                      {canPayOnline ? (
+                        <>
+                          <span>
+                            <CreditCard size={14} />
+                            Visa card
+                          </span>
+                          <span>
+                            <WalletCards size={14} />
+                            Paymob checkout
+                          </span>
+                          <span>
+                            <ReceiptText size={14} />
+                            Invoice reference
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span>
+                            <CreditCard size={14} />
+                            Manual receipt
+                          </span>
+                          <span>
+                            <Banknote size={14} />
+                            Cash default
+                          </span>
+                          <span>
+                            <ReceiptText size={14} />
+                            Reference optional
+                          </span>
+                        </>
+                      )}
                     </div>
 
                     {canPay && (
@@ -318,6 +344,17 @@ export function FinancePage(props: {
                             Paid
                           </button>
                         </div>
+                      )}
+                      {canPayOnline && (
+                        <button
+                          className="primary-button compact online-pay-button"
+                          type="button"
+                          onClick={() => onStartCardPayment(invoice)}
+                          disabled={busy || Boolean(onlinePaymentInvoiceId && onlinePaymentInvoiceId !== invoice.id)}
+                        >
+                          <CreditCard size={15} />
+                          {onlinePaymentInvoiceId === invoice.id ? "Opening checkout" : "Pay with Visa"}
+                        </button>
                       )}
                       {isPrivileged && (
                         <button className="mini-button" type="button" onClick={() => onInvoiceStatus(invoice.id, "mark-as-refunded")} disabled={busy || !canRefund}>

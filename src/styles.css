@@ -2430,6 +2430,11 @@ tbody tr:hover {
   border-top: 1px solid var(--border-subtle);
 }
 
+.invoice-actions.payment-actions .online-pay-button {
+  min-height: 30px;
+  justify-content: center;
+}
+
 .invoice-balance {
   display: flex;
   flex-direction: column;
@@ -2503,6 +2508,7 @@ tbody tr:hover {
   }
 
   .invoice-actions.payment-actions .mini-button,
+  .invoice-actions.payment-actions .online-pay-button,
   .invoice-actions.payment-actions .partial-pay-row,
   .invoice-actions.payment-actions .partial-pay-row .mini-input {
     width: 100%;

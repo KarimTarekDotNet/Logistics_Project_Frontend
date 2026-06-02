@@ -43,6 +43,8 @@ jobs:
           GITHUB_PAGES: "true"
           GITHUB_PAGES_BASE: /Logistics_Project_Frontend/
           VITE_API_BASE_URL: https://unmultipliable-kelsey-unloyal.ngrok-free.dev/
+          VITE_PAYMOB_PUBLIC_KEY: ${{ secrets.VITE_PAYMOB_PUBLIC_KEY }}
+          VITE_PAYMOB_BASE_URL: https://accept.paymob.com/api
 
       - name: Prepare static fallback
         run: |

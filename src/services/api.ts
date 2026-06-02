@@ -8,6 +8,8 @@ import type {
   InvoicePayment,
   InvoicePaymentRequest,
   MarketAnalytics,
+  PaymentMethod,
+  PaymentTransaction,
   Port,
   ProfileResponse,
   ProfileUpdateResponse,
@@ -23,6 +25,7 @@ import type {
   ShipmentDocument,
   ShipmentHistory,
   ShipmentItem,
+  StartPaymentResponse,
   TimelineItem
 } from "../types";
 import { sessionFromAuth } from "../utils/session";
@@ -998,6 +1001,14 @@ export const api = {
 
   deleteInvoice(token: string, id: string) {
     return request<string>(`/api/Invoice/${id}`, { method: "DELETE", token });
+  },
+
+  startPayment(token: string, body: { invoiceId: string; method: PaymentMethod }) {
+    return request<StartPaymentResponse>("/api/Payment/start", { method: "POST", token, body });
+  },
+
+  getPaymentTransaction(token: string, id: string) {
+    return request<PaymentTransaction>(`/api/Payment/${id}`, { token });
   },
 
   getDocument(token: string, id: string) {

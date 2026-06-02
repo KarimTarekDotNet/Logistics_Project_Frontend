@@ -353,6 +353,28 @@ export type InvoicePayment = {
   paidAt: string;
 };
 
+export type PaymentMethod = "Cash" | "BankTransfer" | "CreditCard" | "Wallet" | "Fawry" | number;
+export type PaymentTransactionStatus = "Pending" | "Succeeded" | "Failed" | "Refunded" | "Cancelled" | number;
+
+export type StartPaymentResponse = {
+  paymentTransactionId: string;
+  clientSecret: string;
+  status: PaymentTransactionStatus;
+};
+
+export type PaymentTransaction = {
+  id: string;
+  invoiceId?: string | null;
+  amount: number;
+  currency: string;
+  provider: string;
+  method: string;
+  status: string;
+  failureReason?: string | null;
+  paidAt?: string | null;
+  createdAt: string;
+};
+
 export type ShipmentDocument = {
   id: string;
   shipmentId: string;

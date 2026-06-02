@@ -66,6 +66,17 @@ import { getFriendlyErrorMessage, isBackendUnavailableError, isNotFoundError, sa
 import { getLocalDateTime, isoToLocalDateTime, toIso } from "./utils/format";
 import { isValidId } from "./utils/ids";
 import { getAppPath, getAppPathname, toBrowserPath } from "./utils/navigation";
+import {
+  buildPaymobCheckoutUrl,
+  clearPendingCardPayment,
+  CREDIT_CARD_PAYMENT_METHOD,
+  getPaymobCheckoutConfigError,
+  isPaymentReturnPath,
+  loadPendingCardPayment,
+  readPaymentReturn,
+  savePendingCardPayment,
+  type PaymentReturnDetails
+} from "./utils/payment";
 import { loadPendingVerification, loadStoredSession, persistSession, sessionFromAuth } from "./utils/session";
 
 const initialData: AppData = {
@@ -201,6 +212,7 @@ const browserGuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
 function hasSensitiveUrlDetails(path: string) {
   const confirmationLink = readConfirmationLink(path);
   if (confirmationLink) return false;
+  if (isPaymentReturnPath(path)) return false;
 
   const url = new URL(path, window.location.origin);
   const pathname = getAppPathname(url.pathname);
@@ -211,6 +223,44 @@ function hasSensitiveUrlDetails(path: string) {
     .some((segment) => browserGuidPattern.test(decodeURIComponent(segment)));
 
   return hasQuery || hasRecordId;
+}
+
+function normalizePaymentReturnStatus(status?: string | number | null) {
+  return String(status ?? "").replace(/[\s_-]+/g, "").toLowerCase();
+}
+
+function getPaymentReturnToast(details: PaymentReturnDetails, transactionStatus?: string | number | null) {
+  const status = normalizePaymentReturnStatus(transactionStatus || details.status);
+
+  if (status === "succeeded" || details.success === true) {
+    return {
+      type: "success" as const,
+      title: "Payment received",
+      message: "Your card payment response was received. Finance has been refreshed."
+    };
+  }
+
+  if (status === "failed" || details.success === false) {
+    return {
+      type: "error" as const,
+      title: "Payment not completed",
+      message: "The card payment was declined or cancelled. You can try again from the invoice."
+    };
+  }
+
+  if (status === "cancelled") {
+    return {
+      type: "info" as const,
+      title: "Payment cancelled",
+      message: "The card checkout was cancelled. The invoice is still available in finance."
+    };
+  }
+
+  return {
+    type: "info" as const,
+    title: "Payment pending",
+    message: "The payment response is pending confirmation. Finance has been refreshed."
+  };
 }
 
 type ActionConfirmationOptions = {
@@ -305,6 +355,7 @@ export default function App() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [shipmentWorkflowStep, setShipmentWorkflowStep] = useState<ShipmentWorkflowStep | null>(null);
   const [workflowInvoice, setWorkflowInvoice] = useState<Invoice | null>(null);
+  const [onlinePaymentInvoiceId, setOnlinePaymentInvoiceId] = useState<string | null>(null);
   const [pageLoading, setPageLoading] = useState(false);
   const [profilePreviewOpen, setProfilePreviewOpen] = useState(false);
   const [quoteRequestDetailId, setQuoteRequestDetailId] = useState<string | null>(null);
@@ -465,6 +516,7 @@ export default function App() {
       setProfile(null);
       setInvoices([]);
       setWorkflowInvoice(null);
+      setOnlinePaymentInvoiceId(null);
       setShipmentWorkflowStep(null);
       setItemUpdateReturnStep(null);
       closeQuoteRequestDetails();
@@ -737,6 +789,7 @@ export default function App() {
       setProfile(null);
       setInvoices([]);
       setWorkflowInvoice(null);
+      setOnlinePaymentInvoiceId(null);
       setShipmentWorkflowStep(null);
       setItemUpdateReturnStep(null);
       closeQuoteRequestDetails();
@@ -982,6 +1035,94 @@ export default function App() {
     shipmentWorkflowStep,
     handleBackendUnavailable,
     workspace.timeline
+  ]);
+
+  useEffect(() => {
+    const paymentReturn = readPaymentReturn(path);
+    if (!paymentReturn || !session?.accessToken) return;
+
+    let cancelled = false;
+    let shouldKeepCurrentPath = false;
+
+    void (async () => {
+      const pendingPayment = loadPendingCardPayment();
+      let transactionStatus: string | number | null = null;
+
+      setBusy(true);
+      setActiveView("finance");
+      setWorkflowInvoice(null);
+      setShipmentWorkflowStep(null);
+
+      try {
+        if (pendingPayment?.transactionId) {
+          try {
+            const transaction = await api.getPaymentTransaction(session.accessToken, pendingPayment.transactionId);
+            transactionStatus = transaction.status;
+          } catch (error) {
+            if (isBackendUnavailableError(error)) throw error;
+          }
+        }
+
+        if (pendingPayment?.shipmentId && isValidId(pendingPayment.shipmentId)) {
+          workspace.setSelectedShipmentId(pendingPayment.shipmentId);
+
+          try {
+            const nextInvoices = await api.getInvoicesByShipment(session.accessToken, pendingPayment.shipmentId);
+            if (!cancelled) setInvoices(nextInvoices);
+          } catch (error) {
+            if (isBackendUnavailableError(error)) throw error;
+            if (!isNotFoundError(error)) throw error;
+            if (!cancelled) setInvoices([]);
+          }
+
+          await workspace.loadShipmentRelated(pendingPayment.shipmentId);
+        } else if (pendingPayment?.invoiceId && isValidId(pendingPayment.invoiceId)) {
+          try {
+            const invoice = await api.getInvoice(session.accessToken, pendingPayment.invoiceId);
+            if (!cancelled) setInvoices((current) => [invoice, ...current.filter((item) => item.id !== invoice.id)]);
+          } catch (error) {
+            if (isBackendUnavailableError(error)) throw error;
+          }
+        }
+
+        await loadData();
+
+        if (cancelled) return;
+
+        const toast = getPaymentReturnToast(paymentReturn, transactionStatus);
+        pushToast(toast.type, toast.title, toast.message);
+      } catch (error) {
+        if (isBackendUnavailableError(error)) {
+          shouldKeepCurrentPath = true;
+          handleBackendUnavailable();
+          return;
+        }
+
+        if (!cancelled) {
+          pushToast("info", "Payment response received", "We could not refresh the payment status yet. Open finance again in a moment.");
+        }
+      } finally {
+        if (!cancelled) {
+          clearPendingCardPayment();
+          setOnlinePaymentInvoiceId(null);
+          setBusy(false);
+          if (!shouldKeepCurrentPath) navigate("/", { replace: true, scroll: false });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    handleBackendUnavailable,
+    loadData,
+    navigate,
+    path,
+    pushToast,
+    session?.accessToken,
+    workspace.loadShipmentRelated,
+    workspace.setSelectedShipmentId
   ]);
 
   const filteredRates = data.rates;
@@ -1337,6 +1478,7 @@ export default function App() {
       setProfile(null);
       setInvoices([]);
       setWorkflowInvoice(null);
+      setOnlinePaymentInvoiceId(null);
       setShipmentWorkflowStep(null);
       setItemUpdateReturnStep(null);
       closeQuoteRequestDetails();
@@ -1545,6 +1687,7 @@ export default function App() {
     setProfile(null);
     setInvoices([]);
     setWorkflowInvoice(null);
+    setOnlinePaymentInvoiceId(null);
     setShipmentWorkflowStep(null);
     setItemUpdateReturnStep(null);
     closeQuoteRequestDetails();
@@ -1978,6 +2121,7 @@ export default function App() {
       setQuoteSearch("");
       setInvoices([]);
       setWorkflowInvoice(null);
+      setOnlinePaymentInvoiceId(null);
       setShipmentWorkflowStep(null);
       setItemUpdateReturnStep(null);
       await loadData();
@@ -1991,6 +2135,7 @@ export default function App() {
     workspace.setSelectedShipmentId(id);
     setInvoices([]);
     setWorkflowInvoice(null);
+    setOnlinePaymentInvoiceId(null);
     setShipmentWorkflowStep(null);
     setItemUpdateReturnStep(null);
     setActiveView("shipments");
@@ -2331,6 +2476,51 @@ export default function App() {
         if (selectedShipment) await workspace.loadShipmentRelated(selectedShipment.id);
       }
     })();
+  }
+
+  async function handleStartCardPayment(invoice: Invoice) {
+    if (!session?.accessToken) return;
+
+    const configError = getPaymobCheckoutConfigError();
+    if (configError) {
+      pushToast("error", "Card checkout unavailable", configError);
+      return;
+    }
+
+    const shipmentId = selectedShipment?.id ?? invoice.shipment?.id;
+    setBusy(true);
+    setOnlinePaymentInvoiceId(invoice.id);
+
+    try {
+      const payment = await api.startPayment(session.accessToken, {
+        invoiceId: invoice.id,
+        method: CREDIT_CARD_PAYMENT_METHOD
+      });
+
+      if (!payment.clientSecret) {
+        throw new Error("The payment provider did not return a checkout reference.");
+      }
+
+      savePendingCardPayment({
+        transactionId: payment.paymentTransactionId,
+        invoiceId: invoice.id,
+        shipmentId,
+        createdAt: new Date().toISOString()
+      });
+
+      window.location.assign(buildPaymobCheckoutUrl(payment.clientSecret));
+    } catch (error) {
+      clearPendingCardPayment();
+      setOnlinePaymentInvoiceId(null);
+      setBusy(false);
+
+      if (isBackendUnavailableError(error)) {
+        handleBackendUnavailable();
+        return;
+      }
+
+      pushToast("error", "Card checkout failed", getFriendlyErrorMessage(error));
+    }
   }
 
   function handleConfirmInvoice(id: string) {
@@ -2944,10 +3134,13 @@ export default function App() {
           invoices={invoices}
           isPrivileged={isPrivileged}
           isAdmin={isAdmin}
+          isUser={isUser}
           busy={busy}
+          onlinePaymentInvoiceId={onlinePaymentInvoiceId}
           onCreateInvoice={handleCreateInvoice}
           onLoadInvoices={() => void loadInvoices()}
           onInvoiceStatus={handleInvoiceStatus}
+          onStartCardPayment={handleStartCardPayment}
           onCancelInvoice={handleCancelInvoice}
           onDeleteInvoice={handleDeleteInvoice}
         />
@@ -3007,6 +3200,7 @@ export default function App() {
       onConfirm={() => settleActionConfirmation(true)}
     />
   );
+  const activePaymentReturn = readPaymentReturn(path);
 
   if (restoringSession && !session) {
     return (
@@ -3035,7 +3229,8 @@ export default function App() {
         lowerPathname === "/auth/register" ||
         lowerPathname === "/auth/verify" ||
         lowerPathname === "/confirm-email" ||
-        lowerPathname === "/confirm-email-change");
+        lowerPathname === "/confirm-email-change" ||
+        lowerPathname === "/payment/return");
 
     return (
       <>
@@ -3105,7 +3300,9 @@ export default function App() {
         onOpenProfilePreview={() => setProfilePreviewOpen(true)}
         onLogout={() => void handleLogout()}
       >
-        {pageLoading || (loading && data.rates.length === 0 && data.shipments.length === 0 && data.quotes.length === 0) ? (
+        {activePaymentReturn ? (
+          <LoadingState label="Updating payment" />
+        ) : pageLoading || (loading && data.rates.length === 0 && data.shipments.length === 0 && data.quotes.length === 0) ? (
           <LoadingState label="Opening workspace" />
         ) : (
           renderWorkspace()
