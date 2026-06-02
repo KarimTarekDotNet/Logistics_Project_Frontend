@@ -42,7 +42,7 @@ jobs:
         env:
           GITHUB_PAGES: "true"
           GITHUB_PAGES_BASE: /Logistics_Project_Frontend/
-          VITE_API_BASE_URL: https://karimtarekdotnet.github.io/Logistics_project/
+          VITE_API_BASE_URL: https://unmultipliable-kelsey-unloyal.ngrok-free.dev/
 
       - name: Prepare static fallback
         run: |
