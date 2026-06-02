@@ -353,12 +353,15 @@ export type InvoicePayment = {
   paidAt: string;
 };
 
-export type PaymentMethod = "Cash" | "BankTransfer" | "CreditCard" | "Wallet" | "Fawry" | number;
 export type PaymentTransactionStatus = "Pending" | "Succeeded" | "Failed" | "Refunded" | "Cancelled" | number;
 
 export type StartPaymentResponse = {
   paymentTransactionId: string;
-  clientSecret: string;
+  url?: string | null;
+  checkoutUrl?: string | null;
+  redirectUrl?: string | null;
+  paymentUrl?: string | null;
+  clientSecret?: string | null;
   status: PaymentTransactionStatus;
 };
 

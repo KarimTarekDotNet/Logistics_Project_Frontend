@@ -8,7 +8,6 @@ import type {
   InvoicePayment,
   InvoicePaymentRequest,
   MarketAnalytics,
-  PaymentMethod,
   PaymentTransaction,
   Port,
   ProfileResponse,
@@ -30,8 +29,7 @@ import type {
 } from "../types";
 import { sessionFromAuth } from "../utils/session";
 
-const DEFAULT_PRODUCTION_API_BASE_URL = "https://karimtarekdotnet.github.io/Logistics_project";
-const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || DEFAULT_PRODUCTION_API_BASE_URL).replace(/\/$/, "");
+const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 function shouldUseDevProxy(apiBaseUrl: string) {
   if (!import.meta.env.DEV) return false;
@@ -46,7 +44,7 @@ function shouldUseDevProxy(apiBaseUrl: string) {
 }
 
 const API_BASE_URL = shouldUseDevProxy(configuredApiBaseUrl) ? "" : configuredApiBaseUrl;
-const SKIP_NGROK_WARNING = API_BASE_URL.includes(".ngrok-free.dev");
+const SKIP_TUNNEL_WARNING = import.meta.env.VITE_SKIP_TUNNEL_WARNING === "true";
 export const SESSION_REFRESHED_EVENT = "flowtix:session-refreshed";
 const CSRF_COOKIE_NAME = "XSRF-TOKEN";
 const CSRF_HEADER_NAME = "X-CSRF-TOKEN";
@@ -267,7 +265,7 @@ async function ensureCsrfToken(force = false) {
     method: "GET",
     headers: {
       Accept: "application/json",
-      ...(SKIP_NGROK_WARNING ? { "ngrok-skip-browser-warning": "true" } : {})
+      ...(SKIP_TUNNEL_WARNING ? { "ngrok-skip-browser-warning": "true" } : {})
     },
     credentials: "include",
     referrerPolicy: "strict-origin-when-cross-origin"
@@ -329,7 +327,7 @@ export async function openApiAsset(path: string, filename = "document") {
 
   try {
     const response = await fetch(url, {
-      headers: SKIP_NGROK_WARNING ? { "ngrok-skip-browser-warning": "true" } : {},
+      headers: SKIP_TUNNEL_WARNING ? { "ngrok-skip-browser-warning": "true" } : {},
       credentials: "include",
       referrerPolicy: "strict-origin-when-cross-origin"
     });
@@ -411,7 +409,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
   const headers: Record<string, string> = {
     Accept: "application/json",
-    ...(SKIP_NGROK_WARNING ? { "ngrok-skip-browser-warning": "true" } : {}),
+    ...(SKIP_TUNNEL_WARNING ? { "ngrok-skip-browser-warning": "true" } : {}),
     ...(isFormData ? {} : upperMethod !== "GET" && upperMethod !== "DELETE" ? { "Content-Type": "application/json" } : {}),
     ...(csrfToken ? { [CSRF_HEADER_NAME]: csrfToken } : {}),
     ...options.headers
@@ -1003,7 +1001,7 @@ export const api = {
     return request<string>(`/api/Invoice/${id}`, { method: "DELETE", token });
   },
 
-  startPayment(token: string, body: { invoiceId: string; method: PaymentMethod }) {
+  startPayment(token: string, body: { invoiceId: string }) {
     return request<StartPaymentResponse>("/api/Payment/start", { method: "POST", token, body });
   },
 

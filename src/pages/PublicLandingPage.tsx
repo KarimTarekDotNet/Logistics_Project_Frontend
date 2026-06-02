@@ -3,10 +3,7 @@ import {
   Boxes,
   CheckCircle2,
   ClipboardList,
-  Facebook,
   FileText,
-  Instagram,
-  Linkedin,
   LockKeyhole,
   Moon,
   Network,
@@ -376,20 +373,6 @@ export function PublicLandingPage(props: {
           <div className="landing-footer-legal-block">
             <span>© {currentYear} {BRAND_NAME}. All rights reserved.</span>
             <small>Built by Karim Tarek for secure, audit-ready logistics workflows.</small>
-          </div>
-          <div className="landing-footer-social">
-            <a href="https://www.linkedin.com/in/karim-tarekmohamed" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
-              <Linkedin size={18} />
-              <span>LinkedIn</span>
-            </a>
-            <a href="https://www.facebook.com/KVRIM.1/" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
-              <Facebook size={18} />
-              <span>Facebook</span>
-            </a>
-            <a href="https://www.instagram.com/kariimtarek11/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-              <Instagram size={18} />
-              <span>Instagram</span>
-            </a>
           </div>
         </div>
       </footer>

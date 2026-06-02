@@ -6,6 +6,10 @@ import type { IncomingMessage } from "node:http";
 const isGitHubPages = process.env.GITHUB_PAGES === "true";
 const githubPagesBase = process.env.GITHUB_PAGES_BASE ?? "/Logistics_Project_Frontend/";
 const devApiTarget = process.env.VITE_DEV_API_BASE_URL ?? process.env.VITE_API_BASE_URL ?? "https://localhost:7100";
+const devAllowedHosts = (process.env.VITE_DEV_ALLOWED_HOSTS ?? "")
+  .split(",")
+  .map((host) => host.trim())
+  .filter(Boolean);
 
 function normalizeDevCookieAttributes(cookie: string) {
   return cookie
@@ -41,9 +45,6 @@ export default defineConfig({
         secure: false,
       },
     },
-    allowedHosts: [
-      "ingrainedly-hyperdemocratic-joleen.ngrok-free.dev",
-      "unmultipliable-kelsey-unloyal.ngrok-free.dev",
-    ],
+    ...(devAllowedHosts.length > 0 ? { allowedHosts: devAllowedHosts } : {}),
   },
 });

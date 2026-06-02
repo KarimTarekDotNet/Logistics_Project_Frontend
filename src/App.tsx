@@ -67,13 +67,11 @@ import { getLocalDateTime, isoToLocalDateTime, toIso } from "./utils/format";
 import { isValidId } from "./utils/ids";
 import { getAppPath, getAppPathname, toBrowserPath } from "./utils/navigation";
 import {
-  buildPaymobCheckoutUrl,
   clearPendingCardPayment,
-  CREDIT_CARD_PAYMENT_METHOD,
-  getPaymobCheckoutConfigError,
   isPaymentReturnPath,
   loadPendingCardPayment,
   readPaymentReturn,
+  resolvePaymentCheckoutUrl,
   savePendingCardPayment,
   type PaymentReturnDetails
 } from "./utils/payment";
@@ -2481,24 +2479,18 @@ export default function App() {
   async function handleStartCardPayment(invoice: Invoice) {
     if (!session?.accessToken) return;
 
-    const configError = getPaymobCheckoutConfigError();
-    if (configError) {
-      pushToast("error", "Card checkout unavailable", configError);
-      return;
-    }
-
     const shipmentId = selectedShipment?.id ?? invoice.shipment?.id;
     setBusy(true);
     setOnlinePaymentInvoiceId(invoice.id);
 
     try {
       const payment = await api.startPayment(session.accessToken, {
-        invoiceId: invoice.id,
-        method: CREDIT_CARD_PAYMENT_METHOD
+        invoiceId: invoice.id
       });
+      const checkoutUrl = resolvePaymentCheckoutUrl(payment);
 
-      if (!payment.clientSecret) {
-        throw new Error("The payment provider did not return a checkout reference.");
+      if (!checkoutUrl) {
+        throw new Error("The payment checkout link was not returned by the server.");
       }
 
       savePendingCardPayment({
@@ -2508,7 +2500,7 @@ export default function App() {
         createdAt: new Date().toISOString()
       });
 
-      window.location.assign(buildPaymobCheckoutUrl(payment.clientSecret));
+      window.location.assign(checkoutUrl);
     } catch (error) {
       clearPendingCardPayment();
       setOnlinePaymentInvoiceId(null);

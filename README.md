@@ -2,9 +2,6 @@
 
 Frontend application for the logistics workspace.
 
-Live demo:
-https://karimtarekdotnet.github.io/Logistics_Project_Frontend/
-
 ## Local Development
 
 ```bash
@@ -12,15 +9,17 @@ npm install
 npm run dev
 ```
 
-Local development keeps the existing Vite proxy behavior and targets `https://localhost:7100` by default. To use the ngrok backend instead, set:
+Local development keeps the existing Vite proxy behavior and targets the local backend by default. To use another backend target, create `.env.local` from `.env.example` and set:
 
 ```env
-VITE_DEV_API_BASE_URL=https://unmultipliable-kelsey-unloyal.ngrok-free.dev
+VITE_DEV_API_BASE_URL=<backend-origin>
 ```
 
-Card checkout uses Paymob Unified Checkout. `VITE_PAYMOB_PUBLIC_KEY` defaults to the Paymob test public key, and `VITE_PAYMOB_BASE_URL=https://accept.paymob.com/api` is accepted in the same shape as the backend settings.
+Do not commit real tunnel hosts, callback URLs, API keys, or provider URLs. Values prefixed with `VITE_` are bundled into the browser app, so sensitive payment/provider configuration must stay on the backend.
 
-Production builds use `https://karimtarekdotnet.github.io/Logistics_project/` as the default backend API base URL unless `VITE_API_BASE_URL` is provided.
+For static deployments, prefer same-origin API hosting or a server-side proxy. A `VITE_API_BASE_URL` value is public to users after build.
+
+Online payment starts with `{ invoiceId }` only. The backend should keep provider configuration server-side and return a ready checkout URL for the browser redirect.
 
 ## Deployment
 

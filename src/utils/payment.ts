@@ -1,11 +1,9 @@
 import { getAppPathname } from "./navigation";
+import type { StartPaymentResponse } from "../types";
 
 export const PAYMENT_RETURN_PATH = "/payment/return";
-export const CREDIT_CARD_PAYMENT_METHOD = 2;
 
 const PENDING_CARD_PAYMENT_KEY = "flowtix:pending-card-payment";
-const DEFAULT_PAYMOB_PUBLIC_KEY = "egy_pk_test_eLDXTq0OZWONrQei68RthkxvvbFviDpX";
-const DEFAULT_PAYMOB_BASE_URL = "https://accept.paymob.com/api";
 
 export type PendingCardPayment = {
   transactionId: string;
@@ -21,11 +19,6 @@ export type PaymentReturnDetails = {
   transactionReference: string;
   orderReference: string;
 };
-
-function getStringEnv(name: string) {
-  const env = import.meta.env as Record<string, string | undefined>;
-  return (env[name] ?? "").trim();
-}
 
 function readBooleanParam(params: URLSearchParams, names: string[]) {
   for (const name of names) {
@@ -62,38 +55,16 @@ export function readPaymentReturn(path: string): PaymentReturnDetails | null {
   };
 }
 
-export function getPaymobPublicKey() {
-  return getStringEnv("VITE_PAYMOB_PUBLIC_KEY") || DEFAULT_PAYMOB_PUBLIC_KEY;
-}
+export function resolvePaymentCheckoutUrl(payment: StartPaymentResponse) {
+  const rawUrl = payment.checkoutUrl || payment.redirectUrl || payment.paymentUrl || payment.url || "";
+  if (!rawUrl.trim()) return "";
 
-export function getPaymobCheckoutConfigError() {
-  if (!getPaymobPublicKey()) {
-    return "Paymob public key is missing. Add VITE_PAYMOB_PUBLIC_KEY before starting card checkout.";
+  try {
+    const url = new URL(rawUrl, window.location.origin);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : "";
+  } catch {
+    return "";
   }
-
-  return "";
-}
-
-function getPaymobCheckoutBaseUrl() {
-  const configuredBaseUrl =
-    getStringEnv("VITE_PAYMOB_CHECKOUT_BASE_URL") ||
-    getStringEnv("VITE_PAYMOB_BASE_URL") ||
-    DEFAULT_PAYMOB_BASE_URL;
-  const normalizedBaseUrl = configuredBaseUrl.replace(/\/+$/, "");
-
-  return normalizedBaseUrl.replace(/\/api$/i, "");
-}
-
-export function buildPaymobCheckoutUrl(clientSecret: string) {
-  const publicKey = getPaymobPublicKey();
-  const baseUrl = getPaymobCheckoutBaseUrl();
-  const checkoutUrl = /\/unifiedcheckout$/i.test(baseUrl)
-    ? new URL(`${baseUrl}/`)
-    : new URL("unifiedcheckout/", `${baseUrl}/`);
-
-  checkoutUrl.searchParams.set("publicKey", publicKey);
-  checkoutUrl.searchParams.set("clientSecret", clientSecret);
-  return checkoutUrl.toString();
 }
 
 export function savePendingCardPayment(payment: PendingCardPayment) {

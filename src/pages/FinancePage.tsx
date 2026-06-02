@@ -265,7 +265,7 @@ export function FinancePage(props: {
                           </span>
                           <span>
                             <WalletCards size={14} />
-                            Paymob checkout
+                            Secure checkout
                           </span>
                           <span>
                             <ReceiptText size={14} />
