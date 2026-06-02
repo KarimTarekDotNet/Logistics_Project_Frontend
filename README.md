@@ -2,6 +2,9 @@
 
 Frontend application for the logistics workspace.
 
+Live demo:
+https://karimtarekdotnet.github.io/Logistics_Project_Frontend/
+
 ## Local Development
 
 ```bash
