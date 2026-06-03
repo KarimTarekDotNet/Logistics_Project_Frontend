@@ -15,6 +15,7 @@ export type PendingCardPayment = {
 export type PaymentReturnDetails = {
   success: boolean | null;
   pending: boolean | null;
+  errorOccurred: boolean | null;
   status: string;
   transactionReference: string;
   orderReference: string;
@@ -54,7 +55,8 @@ export function readPaymentReturn(path: string): PaymentReturnDetails | null {
   return {
     success: readBooleanParam(params, ["success", "is_success", "isSuccess"]),
     pending: readBooleanParam(params, ["pending", "is_pending", "isPending"]),
-    status: params.get("status") ?? params.get("txn_response_code") ?? "",
+    errorOccurred: readBooleanParam(params, ["error_occured", "error_occurred", "errorOccurred"]),
+    status: params.get("status") ?? params.get("payment_status") ?? params.get("txn_response_code") ?? "",
     transactionReference: params.get("id") ?? params.get("transaction_id") ?? params.get("transactionId") ?? "",
     orderReference: params.get("order") ?? params.get("order_id") ?? params.get("orderId") ?? ""
   };

@@ -1009,6 +1009,13 @@ export const api = {
     return request<PaymentTransaction>(`/api/Payment/${id}`, { token });
   },
 
+  cancelPayment(token: string, paymentTransactionId: string) {
+    return request<void>(`/api/Payment/cancel${buildQuery({ paymentTransactionId })}`, {
+      method: "POST",
+      token
+    });
+  },
+
   getDocument(token: string, id: string) {
     return request<ShipmentDocument>(`/api/ShipmentDocument/${id}`, { token });
   },

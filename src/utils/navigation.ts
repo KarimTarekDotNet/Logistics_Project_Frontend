@@ -1,7 +1,31 @@
 const rawBasePath = import.meta.env.BASE_URL || "/";
 const normalizedBasePath = rawBasePath.endsWith("/") ? rawBasePath : `${rawBasePath}/`;
+const SPA_REDIRECT_KEY = "flowtix:spa-redirect";
+
+function readStoredSpaRedirect() {
+  try {
+    const redirectedPath = sessionStorage.getItem(SPA_REDIRECT_KEY) ?? "";
+    sessionStorage.removeItem(SPA_REDIRECT_KEY);
+    if (!redirectedPath.startsWith("/") || redirectedPath.startsWith("//")) return "";
+    return redirectedPath;
+  } catch {
+    return "";
+  }
+}
 
 export function getAppPath() {
+  const storedRedirect = readStoredSpaRedirect();
+  if (storedRedirect) {
+    window.history.replaceState(null, "", toBrowserPath(storedRedirect));
+    return storedRedirect;
+  }
+
+  const hashRoute = window.location.hash.startsWith("#/") ? window.location.hash.slice(1) : "";
+  if (hashRoute) {
+    window.history.replaceState(null, "", toBrowserPath(hashRoute));
+    return hashRoute;
+  }
+
   const basePath = normalizedBasePath === "/" ? "" : normalizedBasePath.replace(/\/$/, "");
   let pathname = window.location.pathname || "/";
 

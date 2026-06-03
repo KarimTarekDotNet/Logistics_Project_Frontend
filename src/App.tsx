@@ -227,10 +227,50 @@ function normalizePaymentReturnStatus(status?: string | number | null) {
   return String(status ?? "").replace(/[\s_-]+/g, "").toLowerCase();
 }
 
-function getPaymentReturnToast(details: PaymentReturnDetails, transactionStatus?: string | number | null) {
-  const status = normalizePaymentReturnStatus(transactionStatus || details.status);
+function getFinalTransactionStatus(transactionStatus?: string | number | null) {
+  const normalizedTransactionStatus = normalizePaymentReturnStatus(transactionStatus);
+  return normalizedTransactionStatus && normalizedTransactionStatus !== "pending" ? normalizedTransactionStatus : "";
+}
 
-  if (status === "succeeded" || details.success === true) {
+function isPaymentReturnSuccess(details: PaymentReturnDetails, transactionStatus?: string | number | null) {
+  const finalTransactionStatus = getFinalTransactionStatus(transactionStatus);
+  if (finalTransactionStatus) return ["succeeded", "success", "paid", "approved"].includes(finalTransactionStatus);
+
+  const status = normalizePaymentReturnStatus(details.status);
+  return ["succeeded", "success", "paid", "approved"].includes(status) || details.success === true;
+}
+
+function isPaymentReturnCancelled(details: PaymentReturnDetails, transactionStatus?: string | number | null) {
+  const finalTransactionStatus = getFinalTransactionStatus(transactionStatus);
+  if (finalTransactionStatus) return ["cancelled", "canceled", "voided"].includes(finalTransactionStatus);
+
+  const status = normalizePaymentReturnStatus(details.status);
+  return ["cancelled", "canceled", "voided"].includes(status);
+}
+
+function isPaymentReturnFailed(details: PaymentReturnDetails, transactionStatus?: string | number | null) {
+  const finalTransactionStatus = getFinalTransactionStatus(transactionStatus);
+  if (finalTransactionStatus) return ["failed", "failure", "declined", "rejected", "error", "errored"].includes(finalTransactionStatus);
+
+  const status = normalizePaymentReturnStatus(details.status);
+  return (
+    ["failed", "failure", "declined", "rejected", "error", "errored"].includes(status) ||
+    details.errorOccurred === true ||
+    details.success === false
+  );
+}
+
+function shouldCancelPendingPayment(details: PaymentReturnDetails, transactionStatus?: string | number | null) {
+  if (details.pending === true || isPaymentReturnSuccess(details, transactionStatus)) return false;
+
+  const normalizedTransactionStatus = normalizePaymentReturnStatus(transactionStatus);
+  if (normalizedTransactionStatus && normalizedTransactionStatus !== "pending") return false;
+
+  return isPaymentReturnCancelled(details, transactionStatus) || isPaymentReturnFailed(details, transactionStatus);
+}
+
+function getPaymentReturnToast(details: PaymentReturnDetails, transactionStatus?: string | number | null) {
+  if (isPaymentReturnSuccess(details, transactionStatus)) {
     return {
       type: "success" as const,
       title: "Payment received",
@@ -238,19 +278,19 @@ function getPaymentReturnToast(details: PaymentReturnDetails, transactionStatus?
     };
   }
 
-  if (status === "failed" || details.success === false) {
-    return {
-      type: "error" as const,
-      title: "Payment not completed",
-      message: "The card payment was declined or cancelled. You can try again from the invoice."
-    };
-  }
-
-  if (status === "cancelled") {
+  if (isPaymentReturnCancelled(details, transactionStatus)) {
     return {
       type: "info" as const,
       title: "Payment cancelled",
       message: "The card checkout was cancelled. The invoice is still available in finance."
+    };
+  }
+
+  if (isPaymentReturnFailed(details, transactionStatus)) {
+    return {
+      type: "error" as const,
+      title: "Payment not completed",
+      message: "The card payment was declined or cancelled. You can try again from the invoice."
     };
   }
 
@@ -1056,6 +1096,19 @@ export default function App() {
           try {
             const transaction = await api.getPaymentTransaction(session.accessToken, pendingPayment.transactionId);
             transactionStatus = transaction.status;
+          } catch (error) {
+            if (isBackendUnavailableError(error)) throw error;
+          }
+        }
+
+        if (
+          pendingPayment?.transactionId &&
+          isValidId(pendingPayment.transactionId) &&
+          shouldCancelPendingPayment(paymentReturn, transactionStatus)
+        ) {
+          try {
+            await api.cancelPayment(session.accessToken, pendingPayment.transactionId);
+            transactionStatus = "Cancelled";
           } catch (error) {
             if (isBackendUnavailableError(error)) throw error;
           }

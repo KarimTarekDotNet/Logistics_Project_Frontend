@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FlowTix | Redirecting</title>
+  </head>
+  <body>
+    <script>
+      (function () {
+        var basePath = "/Logistics_Project_Frontend/";
+        var pathname = window.location.pathname || "/";
+        var appPath = pathname.indexOf(basePath) === 0
+          ? pathname.slice(basePath.length)
+          : pathname.replace(/^\/+/, "");
+        var restoredPath = "/" + appPath.replace(/^\/+/, "") + window.location.search + window.location.hash;
+
+        try {
+          sessionStorage.setItem("flowtix:spa-redirect", restoredPath);
+        } catch (error) {
+          window.location.replace(basePath + "#" + restoredPath);
+          return;
+        }
+
+        window.location.replace(basePath);
+      })();
+    </script>
+  </body>
+</html>
