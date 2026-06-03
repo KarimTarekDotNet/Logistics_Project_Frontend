@@ -1,6 +1,7 @@
 import { Banknote, CreditCard, FileText, Plus, ReceiptText, RotateCcw, Trash2, WalletCards } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { ConfirmDialog, EmptyState, Field, PanelTitle, SectionHeader, StatusBadge } from "../components/ui";
+import { DEFAULT_CURRENCY } from "../constants/logistics";
 import { ShipmentContextPanel } from "../features/shipments/ShipmentContextPanel";
 import type { Invoice, InvoicePaymentRequest, Shipment, ShipmentCharge } from "../types";
 import { formatDate, formatMoney } from "../utils/format";
@@ -77,12 +78,12 @@ export function FinancePage(props: {
 
     return {
       amount: Number(amount.toFixed(2)),
-      currency: invoice.currency,
+      currency: DEFAULT_CURRENCY,
       ...(referenceNumber ? { referenceNumber } : {})
     };
   }
 
-  const invoiceCurrency = invoices[0]?.currency ?? selectedShipment?.currency ?? "USD";
+  const invoiceCurrency = DEFAULT_CURRENCY;
   const invoiceSummary = invoices.reduce(
     (summary, invoice) => {
       const balance = resolveInvoiceBalance(invoice);

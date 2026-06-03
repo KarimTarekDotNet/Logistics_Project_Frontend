@@ -365,6 +365,11 @@ export type StartPaymentResponse = {
   status: PaymentTransactionStatus;
 };
 
+export type CheckoutPaymentResponse = {
+  checkoutUrl?: string | null;
+  CheckoutUrl?: string | null;
+};
+
 export type PaymentTransaction = {
   id: string;
   invoiceId?: string | null;

@@ -23,7 +23,7 @@ export function getFriendlyErrorMessage(error: unknown, fallback = "The request 
   if (lower.includes("invoice not found")) return "No invoices found for this shipment.";
   if (lower.includes("request failed with status 404")) return "No records found for this selection.";
   if (lower.includes("non-empty request body") || lower.includes("request field is required")) {
-    return "Select a route, container type, and supported currency before loading analytics.";
+    return "Select a route and container type before loading USD analytics.";
   }
   if (lower.includes("user not found") || lower.includes("customer profile not found")) {
     return "Your account is not allowed to complete this action yet.";

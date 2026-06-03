@@ -1,3 +1,5 @@
+import { DEFAULT_CURRENCY } from "../constants/logistics";
+
 export function getLocalDateTime(daysFromNow = 0) {
   const date = new Date();
   date.setDate(date.getDate() + daysFromNow);
@@ -43,15 +45,17 @@ export function formatShortDate(value?: string) {
   }).format(date);
 }
 
-export function formatMoney(value: number, currency = "USD") {
+export function formatMoney(value: number, _currency = DEFAULT_CURRENCY) {
+  const displayCurrency = DEFAULT_CURRENCY;
+
   try {
     return new Intl.NumberFormat("en", {
       style: "currency",
-      currency,
+      currency: displayCurrency,
       maximumFractionDigits: 2
     }).format(value);
   } catch {
-    return `${value.toLocaleString()} ${currency}`;
+    return `${value.toLocaleString()} ${displayCurrency}`;
   }
 }
 

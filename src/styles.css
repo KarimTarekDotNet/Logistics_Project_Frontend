@@ -4781,6 +4781,13 @@ tbody td {
   font-size: 0.78rem;
 }
 
+.currency-lock-input {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: default;
+}
+
 /* ── Responsive Overrides ── */
 @media (max-width: 1200px) {
   .ops-board {

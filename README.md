@@ -22,7 +22,7 @@ Do not commit real tunnel hosts, callback URLs, API keys, or provider URLs. Valu
 
 For static deployments, prefer same-origin API hosting or a server-side proxy. A `VITE_API_BASE_URL` value is public to users after build.
 
-Online payment starts with `{ invoiceId }` only. The backend should keep provider configuration server-side and return a ready checkout URL for the browser redirect.
+Online payment starts with `{ invoiceId }`, then the frontend calls the backend checkout endpoint with the returned payment transaction id. The backend keeps provider configuration server-side and returns a ready checkout URL for the browser redirect.
 
 ## Deployment
 

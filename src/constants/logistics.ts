@@ -1,4 +1,6 @@
-export const ALLOWED_CURRENCIES = ["USD", "EUR", "GBP", "AED", "CNY"] as const;
+export const DEFAULT_CURRENCY = "USD";
+export const CURRENCY_LOCK_NOTE = "مؤقت لحد ما نضيف عملات أخرى";
+export const ALLOWED_CURRENCIES = [DEFAULT_CURRENCY] as const;
 
 export const SESSION_KEY = "logistic-project-session";
 export const PENDING_VERIFICATION_KEY = "logistic-project-pending-verification";

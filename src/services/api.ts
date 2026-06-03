@@ -2,6 +2,7 @@ import type {
   AuthResponse,
   AuthSession,
   Carrier,
+  CheckoutPaymentResponse,
   ContainerType,
   Customer,
   Invoice,
@@ -1003,6 +1004,13 @@ export const api = {
 
   startPayment(token: string, body: { invoiceId: string }) {
     return request<StartPaymentResponse>("/api/Payment/start", { method: "POST", token, body });
+  },
+
+  checkoutPayment(token: string, paymentTransactionId: string) {
+    return request<CheckoutPaymentResponse>(`/api/Payment/checkout${buildQuery({ paymentTransactionId })}`, {
+      method: "POST",
+      token
+    });
   },
 
   getPaymentTransaction(token: string, id: string) {

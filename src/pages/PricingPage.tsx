@@ -1,6 +1,7 @@
 import { BarChart3, Box, CheckCircle2, CircleDollarSign, Eye, Pencil, Plus, RotateCcw, Search, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ConfirmDialog, EmptyState, EntityActions, Field, MetricLine, PanelTitle, SectionHeader, StatusBadge } from "../components/ui";
+import { CURRENCY_LOCK_NOTE, DEFAULT_CURRENCY } from "../constants/logistics";
 import { RateDetailsPage } from "./RateDetailsPage";
 import type { AuthSession, Carrier, ContainerType, MarketAnalytics, QuoteRequest, Rate, RateBookFilterDraft, RateDraft, RateRecommendationDraft, RateRecommendationResponse, RecommendationPriority, Route } from "../types";
 import { formatMoney, formatShortDate, isoToLocalDateTime } from "../utils/format";
@@ -30,6 +31,14 @@ const rateSortOptions = [
   { value: "route_desc", label: "Route Z to A" }
 ];
 
+function CurrencyField() {
+  return (
+    <Field label="Currency" hint={CURRENCY_LOCK_NOTE}>
+      <input className="currency-lock-input" value={DEFAULT_CURRENCY} readOnly aria-readonly="true" />
+    </Field>
+  );
+}
+
 function formatMarketPosition(value: string | number) {
   if (typeof value === "number") {
     return ["BelowMarket", "AverageMarket", "AboveMarket"][value] ?? "MarketPosition";
@@ -44,7 +53,7 @@ function draftFromRate(rate: Rate): RateDraft {
     routeId: rate.routeId,
     containerTypeId: rate.containerTypeId,
     price: String(rate.price),
-    currency: rate.currency,
+    currency: DEFAULT_CURRENCY,
     validFrom: isoToLocalDateTime(rate.validFrom),
     validTo: isoToLocalDateTime(rate.validTo),
     maxGrossWeightKg: rate.maxGrossWeightKg ? String(rate.maxGrossWeightKg) : "",
@@ -142,7 +151,6 @@ export function PricingPage(props: {
         filterDraft.toPortName,
         filterDraft.minPrice,
         filterDraft.maxPrice,
-        filterDraft.currency,
         filterDraft.validFrom,
         filterDraft.validTo,
         filterDraft.createdFrom,
@@ -257,18 +265,7 @@ export function PricingPage(props: {
                   required
                 />
               </Field>
-              <Field label="Currency">
-                <input
-                  value={editingRate ? editDraft?.currency ?? "" : draft.currency}
-                  onChange={(event) =>
-                    editingRate && editDraft
-                      ? setEditDraft({ ...editDraft, currency: event.target.value.toUpperCase() })
-                      : setDraft({ ...draft, currency: event.target.value.toUpperCase() })
-                  }
-                  maxLength={4}
-                  required
-                />
-              </Field>
+              <CurrencyField />
               <Field label="Valid from">
                 <input
                   type="datetime-local"
@@ -423,9 +420,7 @@ export function PricingPage(props: {
                 </select>
               </Field>
             </div>
-            <Field label="Currency">
-              <input value={analyticsDraft.currency} onChange={(event) => setAnalyticsDraft({ ...analyticsDraft, currency: event.target.value.toUpperCase() })} maxLength={3} />
-            </Field>
+            <CurrencyField />
             <button
               className="secondary-button compact"
               type="submit"
@@ -443,7 +438,7 @@ export function PricingPage(props: {
               <MetricLine label="Active count" value={analytics.activeCount} />
             </div>
           ) : (
-            <p className="panel-note">Select a route, container type, and currency to review live market analytics.</p>
+            <p className="panel-note">Select a route and container type to review live USD market analytics.</p>
           )}
         </section>
 
@@ -485,14 +480,7 @@ export function PricingPage(props: {
               </Field>
             </div>
             <div className="form-grid">
-              <Field label="Currency">
-                <input
-                  value={recommendationDraft.currency}
-                  onChange={(event) => setRecommendationDraft({ ...recommendationDraft, currency: event.target.value.toUpperCase() })}
-                  maxLength={3}
-                  required
-                />
-              </Field>
+              <CurrencyField />
               <Field label="Priority">
                 <select
                   value={recommendationDraft.priority}
@@ -570,7 +558,7 @@ export function PricingPage(props: {
                 })}
               </div>
             ) : (
-              <EmptyState icon={<Sparkles size={24} />} title="No recommendations found" description="Try another route, container, currency, or max price." />
+              <EmptyState icon={<Sparkles size={24} />} title="No recommendations found" description="Try another route, container, or max price." />
             )
           ) : (
             <p className="panel-note">Ask the pricing engine for active rates ranked by your selected priority.</p>
@@ -611,7 +599,7 @@ export function PricingPage(props: {
               <input
                 value={filterDraft.search}
                 onChange={(event) => setFilterDraft({ ...filterDraft, search: event.target.value.slice(0, 100), pageNumber: "1" })}
-                placeholder="Search carrier, route, port, country, container, currency"
+                placeholder="Search carrier, route, port, country, container"
               />
             </label>
             <Field label="Sort by">
@@ -660,14 +648,7 @@ export function PricingPage(props: {
                 onChange={(event) => setFilterDraft({ ...filterDraft, maxPrice: event.target.value, pageNumber: "1" })}
               />
             </Field>
-            <Field label="Currency">
-              <input
-                value={filterDraft.currency}
-                maxLength={4}
-                onChange={(event) => setFilterDraft({ ...filterDraft, currency: event.target.value.toUpperCase(), pageNumber: "1" })}
-                placeholder="USD"
-              />
-            </Field>
+            <CurrencyField />
             <Field label="Valid from">
               <input type="datetime-local" value={filterDraft.validFrom} onChange={(event) => setFilterDraft({ ...filterDraft, validFrom: event.target.value, pageNumber: "1" })} />
             </Field>

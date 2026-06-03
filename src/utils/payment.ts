@@ -1,5 +1,5 @@
 import { getAppPathname } from "./navigation";
-import type { StartPaymentResponse } from "../types";
+import type { CheckoutPaymentResponse, StartPaymentResponse } from "../types";
 
 export const PAYMENT_RETURN_PATH = "/payment/return";
 
@@ -106,6 +106,10 @@ export function resolvePaymentCheckoutUrl(payment: StartPaymentResponse) {
   if (checkoutUrl) return checkoutUrl;
 
   return payment.clientSecret ? buildPaymobCheckoutUrl(payment.clientSecret) : "";
+}
+
+export function resolveCheckoutPaymentUrl(checkout: CheckoutPaymentResponse) {
+  return normalizeCheckoutUrl(checkout.checkoutUrl || checkout.CheckoutUrl || "");
 }
 
 export function savePendingCardPayment(payment: PendingCardPayment) {

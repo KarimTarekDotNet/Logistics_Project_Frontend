@@ -39,7 +39,7 @@ export function ChargeGenerationPage(props: {
               <p>
                 {hasCharges
                   ? "Saved shipment charges are loaded. Review them, then create the draft invoice for confirmation."
-                  : "Charges are calculated from the active rules for this shipment currency, cargo totals, volume, and agreed value."}
+                  : "Charges are calculated in USD from the active rules, cargo totals, volume, and agreed value."}
               </p>
             </div>
             <button

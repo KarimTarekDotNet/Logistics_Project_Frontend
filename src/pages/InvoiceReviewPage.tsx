@@ -1,5 +1,6 @@
 import { CheckCircle2, FileText, Pencil, ReceiptText, XCircle } from "lucide-react";
 import { EmptyState, MetricLine, PanelTitle, SectionHeader, StatusBadge } from "../components/ui";
+import { DEFAULT_CURRENCY } from "../constants/logistics";
 import { ShipmentContextPanel } from "../features/shipments/ShipmentContextPanel";
 import type { Invoice, Shipment, ShipmentCharge } from "../types";
 import { formatDate, formatMoney } from "../utils/format";
@@ -17,7 +18,7 @@ export function InvoiceReviewPage(props: {
   const visibleCharges = invoice?.charges?.length ? invoice.charges : charges;
   const invoiceTotal =
     invoice?.totalAmount ?? visibleCharges.reduce((total, charge) => total + charge.amount + charge.taxAmount, 0);
-  const currency = invoice?.currency ?? selectedShipment?.currency ?? "USD";
+  const currency = DEFAULT_CURRENCY;
   const canConfirm = Boolean(invoice && String(invoice.paymentStatus).toLowerCase() === "draft");
 
   return (

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { AppShell } from "./components/layout/AppShell";
 import { ProfilePreviewModal } from "./components/layout/ProfilePreviewModal";
 import { ConfirmDialog, LoadingState, ToastHost } from "./components/ui";
-import { THEME_KEY, PENDING_VERIFICATION_KEY } from "./constants/logistics";
+import { DEFAULT_CURRENCY, THEME_KEY, PENDING_VERIFICATION_KEY } from "./constants/logistics";
 import {
   buildShipmentItemPayload,
   emptyShipmentItemDraft,
@@ -71,6 +71,7 @@ import {
   isPaymentReturnPath,
   loadPendingCardPayment,
   readPaymentReturn,
+  resolveCheckoutPaymentUrl,
   resolvePaymentCheckoutUrl,
   savePendingCardPayment,
   type PaymentReturnDetails
@@ -107,7 +108,7 @@ const initialRateDraft: RateDraft = {
   routeId: "",
   containerTypeId: "",
   price: "1500",
-  currency: "USD",
+  currency: DEFAULT_CURRENCY,
   validFrom: getLocalDateTime(),
   validTo: getLocalDateTime(30),
   maxGrossWeightKg: "",
@@ -121,7 +122,7 @@ const initialRateDraft: RateDraft = {
 const initialRecommendationDraft: RateRecommendationDraft = {
   routeId: "",
   containerTypeId: "",
-  currency: "USD",
+  currency: DEFAULT_CURRENCY,
   maxPrice: "",
   limit: "5",
   priority: "Cheapest"
@@ -135,7 +136,7 @@ const initialRateBookFilters: RateBookFilterDraft = {
   toPortName: "",
   minPrice: "",
   maxPrice: "",
-  currency: "",
+  currency: DEFAULT_CURRENCY,
   validFrom: "",
   validTo: "",
   createdFrom: "",
@@ -349,7 +350,6 @@ function CustomerRequiredView(props: { onGoToSettings: () => void }) {
 
 function buildRateQuery(filters: RateBookFilterDraft): QueryParams {
   const search = trimOrUndefined(filters.search, 100);
-  const currency = trimOrUndefined(filters.currency.toUpperCase(), 4);
 
   return {
     pageNumber: clampedInteger(filters.pageNumber, 1, 1, Number.MAX_SAFE_INTEGER),
@@ -364,7 +364,7 @@ function buildRateQuery(filters: RateBookFilterDraft): QueryParams {
     toPortName: trimOrUndefined(filters.toPortName),
     minPrice: positiveNumber(filters.minPrice),
     maxPrice: positiveNumber(filters.maxPrice),
-    currency,
+    currency: DEFAULT_CURRENCY,
     validFrom: toIso(filters.validFrom),
     validTo: toIso(filters.validTo),
     createdFrom: toIso(filters.createdFrom),
@@ -421,7 +421,7 @@ export default function App() {
   const [analyticsDraft, setAnalyticsDraft] = useState<AnalyticsDraft>({
     routeId: "",
     containerId: "",
-    currency: "USD"
+    currency: DEFAULT_CURRENCY
   });
   const [analytics, setAnalytics] = useState<MarketAnalytics | null>(null);
   const [recommendationDraft, setRecommendationDraft] = useState<RateRecommendationDraft>(initialRecommendationDraft);
@@ -1768,7 +1768,7 @@ export default function App() {
       const result = await api.getMarketAnalytics(session.accessToken, {
         routeId: analyticsDraft.routeId,
         containerId: analyticsDraft.containerId,
-        currency: analyticsDraft.currency.trim().toUpperCase() || "USD"
+        currency: DEFAULT_CURRENCY
       });
       setAnalytics(result);
     } catch (analyticsError) {
@@ -1787,7 +1787,7 @@ export default function App() {
 
     const normalizedFilters = {
       ...filters,
-      currency: filters.currency.toUpperCase(),
+      currency: DEFAULT_CURRENCY,
       pageNumber: String(clampedInteger(filters.pageNumber, 1, 1, Number.MAX_SAFE_INTEGER)),
       pageSize: String(clampedInteger(filters.pageSize, 10, 1, 50))
     };
@@ -1830,14 +1830,8 @@ export default function App() {
     if (!session?.accessToken) return;
     if (!recommendationDraft.routeId || !recommendationDraft.containerTypeId) return;
 
-    const currency = recommendationDraft.currency.trim().toUpperCase() || "USD";
     const maxPrice = recommendationDraft.maxPrice.trim() ? Number(recommendationDraft.maxPrice) : undefined;
     const limit = Math.min(20, Math.max(1, Number(recommendationDraft.limit) || 5));
-
-    if (currency.length !== 3) {
-      pushToast("error", "Recommendation setup incomplete", "Currency must be a 3-letter code.");
-      return;
-    }
 
     if (maxPrice !== undefined && (!Number.isFinite(maxPrice) || maxPrice <= 0)) {
       pushToast("error", "Recommendation setup incomplete", "Max price must be greater than zero.");
@@ -1849,7 +1843,7 @@ export default function App() {
       const result = await api.getRateRecommendations(session.accessToken, {
         routeId: recommendationDraft.routeId,
         containerTypeId: recommendationDraft.containerTypeId,
-        currency,
+        currency: DEFAULT_CURRENCY,
         maxPrice,
         limit,
         priority: recommendationDraft.priority
@@ -1900,7 +1894,7 @@ export default function App() {
         routeId: rateDraft.routeId,
         containerTypeId: rateDraft.containerTypeId,
         price: Number(rateDraft.price),
-        currency: rateDraft.currency.trim().toUpperCase(),
+        currency: DEFAULT_CURRENCY,
         validFrom: toIso(rateDraft.validFrom)!,
         validTo: toIso(rateDraft.validTo)!,
         maxGrossWeightKg,
@@ -1936,7 +1930,7 @@ export default function App() {
     return runMutation("Rate updated", () =>
       api.updateRate(session.accessToken, id, {
         price: Number(draft.price),
-        currency: draft.currency.trim().toUpperCase(),
+        currency: DEFAULT_CURRENCY,
         validFrom: toIso(draft.validFrom)!,
         validTo: toIso(draft.validTo)!,
         maxGrossWeightKg,
@@ -2540,7 +2534,8 @@ export default function App() {
       const payment = await api.startPayment(session.accessToken, {
         invoiceId: invoice.id
       });
-      const checkoutUrl = resolvePaymentCheckoutUrl(payment);
+      const checkout = await api.checkoutPayment(session.accessToken, payment.paymentTransactionId);
+      const checkoutUrl = resolveCheckoutPaymentUrl(checkout) || resolvePaymentCheckoutUrl(payment);
 
       if (!checkoutUrl) {
         throw new Error("The payment checkout link was not returned by the server.");
