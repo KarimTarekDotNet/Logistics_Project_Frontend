@@ -4298,6 +4298,7 @@ tbody td {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  padding-top: 37px;
 }
 
 /* ── Items Section ── */
@@ -4360,6 +4361,20 @@ tbody td {
   display: flex;
   gap: 6px;
   justify-content: flex-end;
+}
+
+.cargo-item.invoiced {
+  background: var(--bg-elevated);
+}
+
+.cargo-locked-note {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-end;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 650;
 }
 
 .cargo-form {

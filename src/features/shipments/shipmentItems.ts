@@ -39,7 +39,8 @@ export function getUnbilledShipmentItems(items: ShipmentItem[], invoices: Invoic
 
   const latestBillingTimestamp = Math.max(...billingTimestamps);
   return items.filter((item) => {
-    const itemTimestamp = latestTimestamp([item.createdAt, item.updatedAt]);
+    // An edit must not turn an item from an issued invoice into new billable cargo.
+    const itemTimestamp = toTimestamp(item.createdAt);
     return Number.isFinite(itemTimestamp) && itemTimestamp > latestBillingTimestamp;
   });
 }

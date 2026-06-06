@@ -1,5 +1,5 @@
 export const DEFAULT_CURRENCY = "USD";
-export const CURRENCY_LOCK_NOTE = "مؤقت لحد ما نضيف عملات أخرى";
+export const CURRENCY_LOCK_NOTE = "Currency is locked to USD for this demo. In a real application, you would allow users to select from multiple currencies.";
 export const ALLOWED_CURRENCIES = [DEFAULT_CURRENCY] as const;
 
 export const SESSION_KEY = "logistic-project-session";

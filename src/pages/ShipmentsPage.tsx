@@ -103,6 +103,7 @@ export function ShipmentsPage(props: {
   onUpdateTracking: (event: FormEvent) => void;
   onDeleteShipment: (id: string) => void;
   shipmentItems: ShipmentItem[];
+  editableItemIds: ReadonlySet<string>;
   itemDraft: ShipmentItemDraft;
   setItemDraft: (draft: ShipmentItemDraft) => void;
   editingItemId: string | null;
@@ -141,6 +142,7 @@ export function ShipmentsPage(props: {
     onUpdateTracking,
     onDeleteShipment,
     shipmentItems,
+    editableItemIds,
     itemDraft,
     setItemDraft,
     editingItemId,
@@ -464,6 +466,7 @@ export function ShipmentsPage(props: {
 
               <CargoItems
                 shipmentItems={shipmentItems}
+                editableItemIds={editableItemIds}
                 itemDraft={itemDraft}
                 setItemDraft={setItemDraft}
                 itemTotals={itemTotals}
@@ -524,6 +527,7 @@ export function ShipmentsPage(props: {
 
 function CargoItems(props: {
   shipmentItems: ShipmentItem[];
+  editableItemIds: ReadonlySet<string>;
   itemDraft: ShipmentItemDraft;
   setItemDraft: (draft: ShipmentItemDraft) => void;
   itemTotals: { quantity: number; chargeableWeight: number; grossWeight: number; volumeCbm: number; hazardous: number };
@@ -543,6 +547,7 @@ function CargoItems(props: {
 }) {
   const {
     shipmentItems,
+    editableItemIds,
     itemDraft,
     setItemDraft,
     itemTotals,
@@ -665,35 +670,45 @@ function CargoItems(props: {
 
       <div className="compact-list cargo-list">
         {shipmentItems.length === 0 && <p className="empty-hint">No cargo items yet.</p>}
-        {shipmentItems.map((item) => (
-          <div className={`list-row cargo-item ${editingItemId === item.id ? "editing" : ""}`} key={item.id}>
-            <div className="cargo-item-body">
-              <strong>{item.description}</strong>
-              <div className="cargo-metrics">
-                <span>Qty {item.quantity}</span>
-                <span>{item.volumeCbm.toFixed(2)} CBM</span>
-                <span>{item.grossWeight.toFixed(2)} kg gross</span>
-                <span>{item.netWeight.toFixed(2)} kg net</span>
-                <span>{item.chargeableWeight.toFixed(2)} kg chargeable</span>
-                {item.requiredTemperatureCelsius != null && <span>{item.requiredTemperatureCelsius} deg C</span>}
-                {item.isHazardous && <span className="danger-text">Hazardous</span>}
+        {shipmentItems.map((item) => {
+          const canEditItem = canEditItems && editableItemIds.has(item.id);
+          const isInvoicedItem = !editableItemIds.has(item.id);
+
+          return (
+            <div className={`list-row cargo-item ${editingItemId === item.id ? "editing" : ""} ${isInvoicedItem ? "invoiced" : ""}`} key={item.id}>
+              <div className="cargo-item-body">
+                <strong>{item.description}</strong>
+                <div className="cargo-metrics">
+                  <span>Qty {item.quantity}</span>
+                  <span>{item.volumeCbm.toFixed(2)} CBM</span>
+                  <span>{item.grossWeight.toFixed(2)} kg gross</span>
+                  <span>{item.netWeight.toFixed(2)} kg net</span>
+                  <span>{item.chargeableWeight.toFixed(2)} kg chargeable</span>
+                  {item.requiredTemperatureCelsius != null && <span>{item.requiredTemperatureCelsius} deg C</span>}
+                  {item.isHazardous && <span className="danger-text">Hazardous</span>}
+                </div>
+                {item.marksAndNumbers && <small>Marks: {item.marksAndNumbers}</small>}
               </div>
-              {item.marksAndNumbers && <small>Marks: {item.marksAndNumbers}</small>}
+              {canEditItem ? (
+                <div className="cargo-actions">
+                  <button className="mini-button" type="button" disabled={busy} onClick={() => onEditItem(item)}>
+                    <Pencil size={14} />
+                    Edit
+                  </button>
+                  <button className="mini-button danger" type="button" disabled={busy} onClick={() => onDeleteItem(item.id)}>
+                    <Trash2 size={14} />
+                    Delete
+                  </button>
+                </div>
+              ) : isInvoicedItem ? (
+                <div className="cargo-locked-note">
+                  <ReceiptText size={14} />
+                  Invoiced item
+                </div>
+              ) : null}
             </div>
-            {canEditItems && (
-              <div className="cargo-actions">
-                <button className="mini-button" type="button" disabled={busy} onClick={() => onEditItem(item)}>
-                  <Pencil size={14} />
-                  Edit
-                </button>
-                <button className="mini-button danger" type="button" disabled={busy} onClick={() => onDeleteItem(item.id)}>
-                  <Trash2 size={14} />
-                  Delete
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

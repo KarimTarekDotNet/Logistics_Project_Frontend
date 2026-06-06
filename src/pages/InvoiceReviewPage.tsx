@@ -10,11 +10,12 @@ export function InvoiceReviewPage(props: {
   invoice?: Invoice | null;
   charges: ShipmentCharge[];
   busy: boolean;
+  canUpdateItems: boolean;
   onConfirm: (id: string) => void;
   onCancel: (invoice: Invoice) => void;
   onUpdateItems: () => void;
 }) {
-  const { selectedShipment, invoice, charges, busy, onConfirm, onCancel, onUpdateItems } = props;
+  const { selectedShipment, invoice, charges, busy, canUpdateItems, onConfirm, onCancel, onUpdateItems } = props;
   const visibleCharges = invoice?.charges?.length ? invoice.charges : charges;
   const invoiceTotal =
     invoice?.totalAmount ?? visibleCharges.reduce((total, charge) => total + charge.amount + charge.taxAmount, 0);
@@ -62,10 +63,12 @@ export function InvoiceReviewPage(props: {
                   <CheckCircle2 size={18} />
                   Confirm
                 </button>
-                <button className="secondary-button" type="button" disabled={busy} onClick={onUpdateItems}>
-                  <Pencil size={17} />
-                  Update
-                </button>
+                {canUpdateItems && (
+                  <button className="secondary-button" type="button" disabled={busy} onClick={onUpdateItems}>
+                    <Pencil size={17} />
+                    Update
+                  </button>
+                )}
                 <button className="danger-button subtle" type="button" disabled={busy || !canConfirm} onClick={() => onCancel(invoice)}>
                   <XCircle size={17} />
                   Cancel

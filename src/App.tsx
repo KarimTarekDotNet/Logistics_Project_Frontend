@@ -10,7 +10,10 @@ import {
   getUnbilledShipmentItems,
   shipmentItemToDraft
 } from "./features/shipments/shipmentItems";
-import { getWorkflowCharges } from "./features/shipments/shipmentCharges";
+import {
+  getInvoiceCycleCharges,
+  getUninvoicedWorkflowCharges
+} from "./features/shipments/shipmentCharges";
 import { useShipmentWorkspace } from "./hooks/useShipmentWorkspace";
 import { useToasts } from "./hooks/useToasts";
 import { AuthPage } from "./pages/AuthPage";
@@ -559,6 +562,7 @@ export default function App() {
     invoicesResolvedShipmentId === selectedShipmentId
       ? getUnbilledShipmentItems(selectedShipmentItems, invoices)
       : [];
+  const editableShipmentItemIds = new Set(unbilledShipmentItems.map((item) => item.id));
   const shipmentQuoteOptions = isPrivileged
     ? data.quotes
     : data.quotes.length > 0
@@ -2247,6 +2251,13 @@ export default function App() {
     event.preventDefault();
     if (!session?.accessToken || !selectedShipment) return;
 
+    if (editingItemId && !editableShipmentItemIds.has(editingItemId)) {
+      pushToast("info", "Invoiced item is locked", "Items included in an issued or paid invoice cannot be changed.");
+      setEditingItemId(null);
+      setItemDraft(initialShipmentItemDraft);
+      return;
+    }
+
     const submittedDraft = { ...itemDraft };
     const builtItem = buildShipmentItemPayload(itemDraft, selectedShipment.id);
     if ("error" in builtItem) {
@@ -2275,12 +2286,20 @@ export default function App() {
   }
 
   function handleEditShipmentItem(item: ShipmentItem) {
+    if (!editableShipmentItemIds.has(item.id)) {
+      pushToast("info", "Invoiced item is locked", "Add a new cargo item for the next charge and invoice cycle.");
+      return;
+    }
     setEditingItemId(item.id);
     setItemDraft(shipmentItemToDraft(item));
   }
 
   function handleDeleteShipmentItem(id: string) {
     if (!session?.accessToken) return;
+    if (!editableShipmentItemIds.has(id)) {
+      pushToast("info", "Invoiced item is locked", "Items included in an issued or paid invoice cannot be deleted.");
+      return;
+    }
     void runMutation("Cargo item deleted", () => api.deleteShipmentItem(session.accessToken, id));
   }
 
@@ -2354,7 +2373,7 @@ export default function App() {
     if (!session?.accessToken || !selectedShipment) return;
 
     const existingCharges = workspace.charges.length > 0 ? workspace.charges : (selectedShipment.charges ?? []);
-    const existingWorkflowCharges = getWorkflowCharges(existingCharges, selectedShipment);
+    const existingWorkflowCharges = getUninvoicedWorkflowCharges(existingCharges, selectedShipment);
     if (existingWorkflowCharges.length > 0) {
       workspace.setCharges(existingCharges);
       pushToast("info", "Charges already generated", "Review the saved charges, then create the invoice.");
@@ -2389,7 +2408,7 @@ export default function App() {
     if (!session?.accessToken || !selectedShipment) return;
 
     const currentCharges = workspace.charges.length > 0 ? workspace.charges : (selectedShipment.charges ?? []);
-    const billingCharges = getWorkflowCharges(currentCharges, selectedShipment);
+    const billingCharges = getUninvoicedWorkflowCharges(currentCharges, selectedShipment);
     if (billingCharges.length === 0) {
       pushToast("error", "Charges needed", "Generate charges before creating the invoice.");
       return;
@@ -2463,7 +2482,7 @@ export default function App() {
       setInvoicesResolvedShipmentId(shipmentId);
       workspace.setCharges(nextCharges);
       await workspace.loadShipmentRelated(shipmentId);
-      const nextWorkflowCharges = getWorkflowCharges(nextCharges, restoredShipment);
+      const nextWorkflowCharges = getUninvoicedWorkflowCharges(nextCharges, restoredShipment);
 
       const requestedInvoice = invoiceId ? nextInvoices.find((invoice) => invoice.id === invoiceId) : undefined;
       const requestedInvoiceStatus = String(requestedInvoice?.paymentStatus ?? "").replace(/\s+/g, "").toLowerCase();
@@ -2654,8 +2673,9 @@ export default function App() {
     const shipmentId = selectedShipment.id;
     const chargeIds = Array.from(
       new Set(
-        getWorkflowCharges(
+        getInvoiceCycleCharges(
           [...workspace.charges, ...(invoice.charges ?? []), ...(selectedShipment.charges ?? [])] as ShipmentCharge[],
+          invoice.id,
           selectedShipment
         )
           .map((charge) => charge.id)
@@ -3249,6 +3269,7 @@ export default function App() {
             selectedShipment={selectedShipment}
             charges={workspace.charges}
             busy={busy}
+            canUpdateItems={editableShipmentItemIds.size > 0}
             onGenerate={handleGenerateCharges}
             onCreateInvoice={handleCreateWorkflowInvoice}
             onUpdateItems={handleUpdateItemsFromInvoice}
@@ -3263,6 +3284,7 @@ export default function App() {
             invoice={workflowInvoice}
             charges={workspace.charges}
             busy={busy}
+            canUpdateItems={editableShipmentItemIds.size > 0}
             onConfirm={handleConfirmInvoice}
             onCancel={handleCancelWorkflowInvoice}
             onUpdateItems={handleUpdateItemsFromInvoice}
@@ -3295,6 +3317,7 @@ export default function App() {
           onUpdateTracking={handleUpdateTracking}
           onDeleteShipment={handleDeleteShipment}
           shipmentItems={workspace.shipmentItems}
+          editableItemIds={editableShipmentItemIds}
           itemDraft={itemDraft}
           setItemDraft={setItemDraft}
           editingItemId={editingItemId}

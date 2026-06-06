@@ -1,7 +1,7 @@
 import { Calculator, CircleDollarSign, PackageCheck, Pencil, ReceiptText } from "lucide-react";
 import { EmptyState, PanelTitle, SectionHeader } from "../components/ui";
 import { ShipmentContextPanel } from "../features/shipments/ShipmentContextPanel";
-import { getWorkflowCharges } from "../features/shipments/shipmentCharges";
+import { getUninvoicedWorkflowCharges } from "../features/shipments/shipmentCharges";
 import type { Shipment, ShipmentCharge } from "../types";
 import { formatMoney } from "../utils/format";
 
@@ -9,12 +9,13 @@ export function ChargeGenerationPage(props: {
   selectedShipment?: Shipment;
   charges: ShipmentCharge[];
   busy: boolean;
+  canUpdateItems: boolean;
   onGenerate: () => void;
   onCreateInvoice: () => void;
   onUpdateItems: () => void;
 }) {
-  const { selectedShipment, charges, busy, onGenerate, onCreateInvoice, onUpdateItems } = props;
-  const workflowCharges = getWorkflowCharges(charges, selectedShipment);
+  const { selectedShipment, charges, busy, canUpdateItems, onGenerate, onCreateInvoice, onUpdateItems } = props;
+  const workflowCharges = getUninvoicedWorkflowCharges(charges, selectedShipment);
   const chargeTotal = workflowCharges.reduce((total, charge) => total + charge.amount + charge.taxAmount, 0);
   const hasCharges = workflowCharges.length > 0;
 
@@ -34,7 +35,7 @@ export function ChargeGenerationPage(props: {
 
           <section className="workflow-center-panel">
             <div className="workflow-center-copy">
-              <span className="workflow-step-mark">2</span>
+              <span className="workflow-step-mark">1</span>
               <h2>{hasCharges ? "Create invoice from charges" : "Generate shipment charges"}</h2>
               <p>
                 {hasCharges
@@ -51,10 +52,12 @@ export function ChargeGenerationPage(props: {
               {hasCharges ? <ReceiptText size={22} /> : <Calculator size={22} />}
               {hasCharges ? "Create invoice" : "Generate"}
             </button>
-            <button className="secondary-button compact" type="button" onClick={onUpdateItems} disabled={busy}>
-              <Pencil size={16} />
-              Update items
-            </button>
+            {canUpdateItems && (
+              <button className="secondary-button compact" type="button" onClick={onUpdateItems} disabled={busy}>
+                <Pencil size={16} />
+                Update items
+              </button>
+            )}
           </section>
 
           <section className="panel">
