@@ -1,7 +1,7 @@
 import { ArrowLeft, CheckCircle2, CircleDollarSign, ExternalLink, Moon, Send, ShieldCheck, Sun, Weight } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { BrandLogo } from "../components/brand/BrandLogo";
-import { EmptyState, Field, LoadingState, MetricLine, PanelTitle, StatusBadge } from "../components/ui";
+import { EmptyState, Field, LoadingSpinner, MetricLine, PanelTitle, StatusBadge } from "../components/ui";
 import { BRAND_NAME } from "../constants/brand";
 import { api } from "../services/api";
 import type { AuthSession, QuoteRequest, QuoteRequestDraft, Rate } from "../types";
@@ -186,7 +186,7 @@ export function RateDetailsPage(props: {
 
       {loading && (
         <section className="rate-detail-shell">
-          <LoadingState label="Loading rate details" />
+          <LoadingSpinner label="Loading rate details" size="lg" />
         </section>
       )}
 
@@ -348,8 +348,8 @@ export function RateDetailsPage(props: {
                     </div>
                   )}
                   <button className="primary-button" type="submit" disabled={busy || Boolean(validationMessage) || !rate.isActive || !canRequestQuote}>
-                    <Send size={17} />
-                    {busy ? "Submitting..." : "Request quote"}
+                    {busy ? <LoadingSpinner size="sm" /> : <Send size={17} />}
+                    {busy ? "Submitting" : "Request quote"}
                   </button>
                 </form>
                 {!canRequestQuote && (

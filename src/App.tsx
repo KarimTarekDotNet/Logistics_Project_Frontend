@@ -2,8 +2,8 @@ import { LockKeyhole, Settings } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { AppShell } from "./components/layout/AppShell";
 import { ProfilePreviewModal } from "./components/layout/ProfilePreviewModal";
-import { ConfirmDialog, LoadingState, ToastHost } from "./components/ui";
-import { DEFAULT_CURRENCY, THEME_KEY, PENDING_VERIFICATION_KEY } from "./constants/logistics";
+import { ConfirmDialog, LoadingSpinner, ToastHost } from "./components/ui";
+import { DEFAULT_CURRENCY, THEME_KEY } from "./constants/logistics";
 import {
   buildShipmentItemPayload,
   emptyShipmentItemDraft,
@@ -62,7 +62,7 @@ import type {
   VerifyDraft,
   View
 } from "./types";
-import { getFriendlyErrorMessage, isBackendUnavailableError, isNotFoundError, safe } from "./utils/errors";
+import { getErrorMessage, getFriendlyErrorMessage, isBackendUnavailableError, isNotFoundError, safe } from "./utils/errors";
 import { getLocalDateTime, isoToLocalDateTime, toIso } from "./utils/format";
 import { isValidId } from "./utils/ids";
 import { getAppPath, getAppPathname, toBrowserPath } from "./utils/navigation";
@@ -76,7 +76,14 @@ import {
   savePendingCardPayment,
   type PaymentReturnDetails
 } from "./utils/payment";
-import { loadPendingVerification, loadStoredSession, persistSession, sessionFromAuth } from "./utils/session";
+import {
+  clearPendingVerification,
+  loadPendingVerification,
+  loadStoredSession,
+  persistSession,
+  savePendingVerification,
+  sessionFromAuth
+} from "./utils/session";
 
 const initialData: AppData = {
   rates: [],
@@ -892,18 +899,12 @@ export default function App() {
 
     if (isEmailConfirmation) {
       const pending = loadPendingVerification();
-      if (pending.userId && pending.userId !== userId) {
-        localStorage.removeItem(PENDING_VERIFICATION_KEY);
-        setVerifyDraft((current) => ({ ...current, email: "", phone: "", phoneCode: "" }));
-      } else {
-        localStorage.setItem(PENDING_VERIFICATION_KEY, JSON.stringify({ ...pending, userId }));
-        setVerifyDraft((current) => ({
-          ...current,
-          email: current.email || pending.email,
-          phone: current.phone || pending.phone,
-          phoneCode: ""
-        }));
-      }
+      setVerifyDraft((current) => ({
+        ...current,
+        email: current.email || pending.email,
+        phone: current.phone || pending.phone,
+        phoneCode: ""
+      }));
       setAuthMode("verify");
       setVerificationStep("email");
     }
@@ -938,15 +939,13 @@ export default function App() {
         if (result.type === "registration-email") {
           const response = result.response;
           const pending = loadPendingVerification();
-          const nextPending = {
+          const nextPending = savePendingVerification({
             ...pending,
-            userId,
             email: response.email || pending.email,
             phone: response.phoneNumber || pending.phone,
             userName: response.userName || pending.userName,
             emailConfirmed: true
-          };
-          localStorage.setItem(PENDING_VERIFICATION_KEY, JSON.stringify(nextPending));
+          });
           setVerifyDraft((current) => ({
             ...current,
             email: nextPending.email,
@@ -1264,7 +1263,21 @@ export default function App() {
     setTheme((current) => (current === "dark" ? "light" : "dark"));
   }
 
+  function clearRegistrationVerification() {
+    clearPendingVerification();
+    setRegisterForm(initialRegisterForm);
+    setVerifyDraft((current) => ({
+      ...current,
+      email: "",
+      phone: "",
+      phoneCode: ""
+    }));
+  }
+
   function handleAuthModeChange(mode: "login" | "register" | "verify") {
+    if (authMode === "verify" && mode !== "verify") {
+      clearRegistrationVerification();
+    }
     setAuthMode(mode);
     if (mode === "login") navigate("/auth/login");
     if (mode === "register") navigate("/auth/register");
@@ -1272,17 +1285,17 @@ export default function App() {
   }
 
   function isUnconfirmedEmailResponse(error: unknown) {
-    const message = getFriendlyErrorMessage(error).toLowerCase();
+    const message = getErrorMessage(error).toLowerCase();
     return message.includes("confirm your email") || message.includes("email before logging in");
   }
 
   function isEmailConfirmationSentResponse(error: unknown) {
-    const message = getFriendlyErrorMessage(error).toLowerCase();
+    const message = getErrorMessage(error).toLowerCase();
     return message.includes("confirmation link has been sent") || message.includes("check your email");
   }
 
   function isExistingRegistrationResponse(error: unknown) {
-    const message = getFriendlyErrorMessage(error).toLowerCase();
+    const message = getErrorMessage(error).toLowerCase();
     return message.includes("already exists") || message.includes("already registered");
   }
 
@@ -1348,21 +1361,12 @@ export default function App() {
   }
 
   function storePendingVerification(pending: {
-    userId?: string;
     email?: string;
     phone?: string;
     userName?: string;
     emailConfirmed?: boolean;
   }) {
-    const nextPending = {
-      userId: pending.userId ?? "",
-      email: pending.email ?? "",
-      phone: pending.phone ?? "",
-      userName: pending.userName ?? "",
-      emailConfirmed: pending.emailConfirmed ?? false
-    };
-
-    localStorage.setItem(PENDING_VERIFICATION_KEY, JSON.stringify(nextPending));
+    const nextPending = savePendingVerification(pending);
     setVerifyDraft((current) => ({
       ...current,
       email: nextPending.email,
@@ -1399,7 +1403,6 @@ export default function App() {
       phoneMatches(normalizedIdentity, registeredPhone);
 
     return {
-      userId: authPayload?.id || pending.userId,
       email:
         payloadEmail ||
         (identityMatchesPending && pending.email) ||
@@ -1427,7 +1430,7 @@ export default function App() {
       }
 
       if (isEmailConfirmationSentResponse(error)) {
-        const message = getFriendlyErrorMessage(error);
+        const message = "A confirmation link has been sent. Check your email.";
         pushToast("success", "Email verification request", message);
         return { isAuthenticated: false, message, expiration: "" };
       }
@@ -1447,14 +1450,8 @@ export default function App() {
     const hasBackendAccountSignal = Boolean(response.id || response.email || response.phoneNumber || response.userName);
 
     if (isEmailAlreadyConfirmedResponse(response)) {
-      localStorage.removeItem(PENDING_VERIFICATION_KEY);
+      clearRegistrationVerification();
       setLoginForm({ identity: response.email || form.email, password: "" });
-      setVerifyDraft((current) => ({
-        ...current,
-        email: response.email || form.email,
-        phone: response.phoneNumber || registeredPhone,
-        phoneCode: ""
-      }));
       handleAuthModeChange("login");
       pushToast("info", "Account already confirmed", "Sign in with your existing account.");
       return true;
@@ -1466,7 +1463,6 @@ export default function App() {
     }
 
     storePendingVerification({
-      userId: response.id,
       email: response.email || form.email,
       phone: response.phoneNumber || registeredPhone,
       userName: response.userName || form.userName,
@@ -1519,7 +1515,7 @@ export default function App() {
     try {
       const response = await api.login(normalizedLoginForm);
       if (!response.isAuthenticated) {
-        pushToast("error", "Login failed", response.message || "The credentials could not be authenticated.");
+        pushToast("error", "Login failed", "The credentials could not be authenticated.");
         return;
       }
 
@@ -1539,6 +1535,7 @@ export default function App() {
       showPageLoading(650);
       setSession(nextSession);
       persistSession(nextSession);
+      clearRegistrationVerification();
       void api.prepareCsrfToken(true);
       navigate("/", { replace: true });
       pushToast("success", "Signed in", `Welcome back${nextSession.userName ? `, ${nextSession.userName}` : ""}.`);
@@ -1569,7 +1566,6 @@ export default function App() {
       const registeredPhone = response.phoneNumber || getRegisteredPhone(normalizedForm);
 
       storePendingVerification({
-        userId: response.id,
         email: response.email || normalizedForm.email,
         phone: registeredPhone,
         userName: response.userName || normalizedForm.userName,
@@ -1706,17 +1702,14 @@ export default function App() {
       const response = await api.confirmPhone(verifyDraft.phone.trim(), code);
       const phoneConfirmed = response.isAuthenticated || response.message.toLowerCase().includes("phone number confirmed");
       if (!phoneConfirmed) {
-        pushToast("error", "Phone verification failed", response.message || "The code is invalid or expired.");
+        pushToast("error", "Phone verification failed", "The code is invalid or expired.");
         return;
       }
 
-      localStorage.removeItem(PENDING_VERIFICATION_KEY);
       pushToast("success", "Phone verified", response.message || "Your phone number has been confirmed.");
 
       const identity = response.email || verifyDraft.email.trim() || registerForm.email.trim() || verifyDraft.phone.trim();
       setLoginForm({ identity, password: "" });
-      setRegisterForm(initialRegisterForm);
-      setVerifyDraft((current) => ({ ...current, email: identity, phoneCode: "" }));
       handleAuthModeChange("login");
     } catch (phoneError) {
       if (isBackendUnavailableError(phoneError)) {
@@ -1729,11 +1722,11 @@ export default function App() {
     }
   }
 
-  async function handleLogout() {
-    const current = session;
+  function clearClientSession() {
     loadSequenceRef.current += 1;
     setSession(null);
     persistSession(null);
+    clearRegistrationVerification();
     setData(initialData);
     setProfile(null);
     setInvoices([]);
@@ -1746,16 +1739,30 @@ export default function App() {
     setActiveView("overview");
     workspace.clearShipmentContext();
     navigate("/", { replace: true });
+  }
 
-    if (current?.accessToken) {
-      await safe(() => api.logout(current.accessToken), { message: "" });
+  async function handleLogout() {
+    if (!session?.accessToken || busy) return;
+
+    setBusy(true);
+    try {
+      await api.logout(session.accessToken);
+      clearClientSession();
+    } catch (error) {
+      pushToast(
+        "error",
+        "Logout could not be completed",
+        `${getFriendlyErrorMessage(error)} Your server session may still be active.`
+      );
+    } finally {
+      setBusy(false);
     }
   }
 
   async function handleLogoutAll() {
     if (!session?.accessToken) return;
     const result = await runMutation("Sessions revoked", () => api.logoutAll(session.accessToken), { refresh: false, confirm: false });
-    if (result) await handleLogout();
+    if (result) clearClientSession();
   }
 
   async function handleLoadAnalytics(event: FormEvent) {
@@ -2783,7 +2790,7 @@ export default function App() {
           pushToast("success", "Password updated", "Your password has been changed successfully.");
           setPasswordDraft({ currentPassword: "", newPassword: "", confirmPassword: "" });
         } else {
-          pushToast("error", "Password update failed", response.message);
+          pushToast("error", "Password update failed", "The password could not be updated. Please review the entered information.");
         }
         return response;
       },
@@ -3245,7 +3252,7 @@ export default function App() {
   if (restoringSession && !session) {
     return (
       <>
-        <LoadingState label="Opening secure session" />
+        <LoadingSpinner label="Opening secure session" size="lg" fullScreen />
         <ToastHost toasts={toasts} onDismiss={dismissToast} />
       </>
     );
@@ -3255,7 +3262,11 @@ export default function App() {
   if (activeConfirmationLink) {
     return (
       <>
-        <LoadingState label={activeConfirmationLink.type === "registration-email" ? "Confirming email" : "Confirming email change"} />
+        <LoadingSpinner
+          label={activeConfirmationLink.type === "registration-email" ? "Confirming email" : "Confirming email change"}
+          size="lg"
+          fullScreen
+        />
         <ToastHost toasts={toasts} onDismiss={dismissToast} />
       </>
     );
@@ -3297,6 +3308,7 @@ export default function App() {
             theme={theme}
             onToggleTheme={handleToggleTheme}
             onBackToLanding={() => {
+              clearRegistrationVerification();
               setAuthMode("login");
               navigate("/");
             }}
@@ -3341,9 +3353,9 @@ export default function App() {
         onLogout={() => void handleLogout()}
       >
         {activePaymentReturn ? (
-          <LoadingState label="Updating payment" />
+          <LoadingSpinner label="Updating payment" size="lg" fullScreen />
         ) : pageLoading || (loading && data.rates.length === 0 && data.shipments.length === 0 && data.quotes.length === 0) ? (
-          <LoadingState label="Opening workspace" />
+          <LoadingSpinner label="Opening workspace" size="lg" fullScreen />
         ) : (
           renderWorkspace()
         )}

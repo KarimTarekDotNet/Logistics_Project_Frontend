@@ -1,6 +1,6 @@
 import { CloudUpload, Download, FileText, Trash2, Upload } from "lucide-react";
 import { useRef, useState, type DragEvent, type FormEvent } from "react";
-import { ConfirmDialog, EmptyState, EntityActions, Field, PanelTitle, SectionHeader } from "../components/ui";
+import { ConfirmDialog, EmptyState, EntityActions, Field, LoadingSpinner, PanelTitle, SectionHeader } from "../components/ui";
 import { documentTypes } from "../constants/logistics";
 import { ShipmentContextPanel } from "../features/shipments/ShipmentContextPanel";
 import { openApiAsset } from "../services/api";
@@ -125,7 +125,7 @@ export function DocumentsPage(props: {
                           title="Open document"
                           onClick={() => void openDocument(document)}
                         >
-                          <Download size={14} />
+                          {openingId === document.id ? <LoadingSpinner size="sm" /> : <Download size={14} />}
                         </button>
                       )}
                       <button className="icon-mini danger" type="button" title="Delete document" onClick={() => setDeleteId(document.id)}>

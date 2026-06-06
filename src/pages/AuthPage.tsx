@@ -2,7 +2,7 @@ import { ArrowLeft, CheckCircle2, CircleDollarSign, KeyRound, LogIn, Moon, Plus,
 import { BrandLogo } from "../components/brand/BrandLogo";
 import { BRAND_NAME, BRAND_TAGLINE } from "../constants/brand";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Field, PasswordInput, StatCard } from "../components/ui";
+import { Field, LoadingSpinner, PasswordInput, StatCard } from "../components/ui";
 import type { RegisterForm, VerificationStep, VerifyDraft } from "../types";
 import { maskPhone } from "../utils/session";
 
@@ -287,8 +287,8 @@ export function AuthPage(props: {
                   />
                 </Field>
                 <button className="primary-button auth-submit" type="submit" disabled={busy}>
-                  <LogIn size={18} />
-                  {busy ? "Signing in..." : "Sign in"}
+                  {busy ? <LoadingSpinner size="sm" /> : <LogIn size={18} />}
+                  {busy ? "Signing in" : "Sign in"}
                 </button>
                 </form>
               )}
@@ -336,8 +336,8 @@ export function AuthPage(props: {
                   </Field>
                 </div>
                 <button className="primary-button auth-submit" type="submit" disabled={busy}>
-                  <Plus size={18} />
-                  {busy ? "Creating account..." : "Create account"}
+                  {busy ? <LoadingSpinner size="sm" /> : <Plus size={18} />}
+                  {busy ? "Creating account" : "Create account"}
                 </button>
                 </form>
               )}

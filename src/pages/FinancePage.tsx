@@ -1,6 +1,6 @@
 import { Banknote, CreditCard, FileText, Plus, ReceiptText, RotateCcw, Trash2, WalletCards } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { ConfirmDialog, EmptyState, Field, PanelTitle, SectionHeader, StatusBadge } from "../components/ui";
+import { ConfirmDialog, EmptyState, Field, LoadingSpinner, PanelTitle, SectionHeader, StatusBadge } from "../components/ui";
 import { DEFAULT_CURRENCY } from "../constants/logistics";
 import { ShipmentContextPanel } from "../features/shipments/ShipmentContextPanel";
 import type { Invoice, InvoicePaymentRequest, Shipment, ShipmentCharge } from "../types";
@@ -353,7 +353,7 @@ export function FinancePage(props: {
                           onClick={() => onStartCardPayment(invoice)}
                           disabled={busy || Boolean(onlinePaymentInvoiceId && onlinePaymentInvoiceId !== invoice.id)}
                         >
-                          <CreditCard size={15} />
+                          {onlinePaymentInvoiceId === invoice.id ? <LoadingSpinner size="sm" /> : <CreditCard size={15} />}
                           {onlinePaymentInvoiceId === invoice.id ? "Opening checkout" : "Pay with Visa"}
                         </button>
                       )}

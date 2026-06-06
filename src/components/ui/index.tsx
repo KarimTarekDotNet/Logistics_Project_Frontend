@@ -13,6 +13,8 @@ import type { Toast } from "../../types";
 import { compactStatus } from "../../utils/format";
 import { statusClass } from "../../utils/search";
 
+export { LoadingSpinner } from "./LoadingSpinner";
+
 export function SectionHeader(props: { icon: ReactNode; title: string; meta?: string; children?: ReactNode }) {
   return (
     <div className="section-header">
@@ -96,21 +98,6 @@ export function EmptyState(props: { icon: ReactNode; title: string; description?
       <strong>{props.title}</strong>
       {props.description && <p>{props.description}</p>}
       {props.action}
-    </div>
-  );
-}
-
-export function LoadingState(props: { label?: string }) {
-  return (
-    <div className="loading-state" role="status" aria-live="polite">
-      <div className="loading-route" aria-hidden="true">
-        <span className="loading-node start" />
-        <span className="loading-path" />
-        <span className="loading-cargo" />
-        <span className="loading-node end" />
-      </div>
-      <strong>{props.label ?? "Loading workspace"}</strong>
-      <span>Syncing rates, quotes, shipments, and documents</span>
     </div>
   );
 }

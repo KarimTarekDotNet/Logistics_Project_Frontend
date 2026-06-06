@@ -1,6 +1,6 @@
 import { ArrowLeft, CheckCircle2, CircleDollarSign, ClipboardList, Clock3, PackageCheck, UserRound, XCircle } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { EmptyState, Field, LoadingState, MetricLine, PanelTitle, SectionHeader, StatusBadge } from "../components/ui";
+import { EmptyState, Field, LoadingSpinner, MetricLine, PanelTitle, SectionHeader, StatusBadge } from "../components/ui";
 import type { QuoteRequest } from "../types";
 import { formatDate, formatMoney } from "../utils/format";
 
@@ -38,7 +38,7 @@ export function QuoteRequestDetailsPage(props: {
   }
 
   if (props.loading) {
-    return <LoadingState label="Loading quote request details" />;
+    return <LoadingSpinner label="Loading quote request details" size="lg" />;
   }
 
   if (!request) {
