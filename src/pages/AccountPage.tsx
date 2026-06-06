@@ -1,6 +1,6 @@
-import { Building2, CheckCircle2, KeyRound, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import { AtSign, Building2, CheckCircle2, KeyRound, Mail, Phone, Send, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { ConfirmDialog, Field, PanelTitle, PasswordInput, SectionHeader, StatusBadge } from "../components/ui";
+import { ConfirmDialog, Field, OtpInput, PanelTitle, PasswordInput, SectionHeader, StatusBadge } from "../components/ui";
 import type { Customer, CustomerDraft, PasswordDraft, ProfileDraft, ProfileResponse, VerifyDraft } from "../types";
 import { formatDate } from "../utils/format";
 
@@ -22,7 +22,9 @@ export function AccountPage(props: {
   setCustomerDraft: (draft: CustomerDraft) => void;
   onUpdateProfile: (event: FormEvent) => void;
   onUpdatePassword: (event: FormEvent) => void;
-  onVerifyPendingPhone: (event: FormEvent) => void;
+  onResendCurrentPhone: () => void;
+  onVerifyCurrentPhone: (code?: string) => void;
+  onVerifyPendingPhone: (event?: FormEvent, code?: string) => void;
   onSaveCustomer: (event: FormEvent) => void;
   onDeleteCustomer: () => void;
   onLogoutAll: () => void;
@@ -45,6 +47,8 @@ export function AccountPage(props: {
     setCustomerDraft,
     onUpdateProfile,
     onUpdatePassword,
+    onResendCurrentPhone,
+    onVerifyCurrentPhone,
     onVerifyPendingPhone,
     onSaveCustomer,
     onDeleteCustomer,
@@ -52,6 +56,12 @@ export function AccountPage(props: {
   } = props;
   const [confirmCustomerDelete, setConfirmCustomerDelete] = useState(false);
   const [confirmLogoutAll, setConfirmLogoutAll] = useState(false);
+
+  function normalizePhoneInput(value: string) {
+    const hasPlus = value.trimStart().startsWith("+");
+    const digits = value.replace(/\D/g, "").slice(0, 15);
+    return `${hasPlus ? "+" : ""}${digits}`;
+  }
 
   return (
     <div className="view-stack">
@@ -65,32 +75,95 @@ export function AccountPage(props: {
               <strong>{profile?.name || "Signed in user"}</strong>
               <small>{profile?.email || "Email pending"}</small>
             </div>
-            <StatusBadge status={profile?.customer ? "Customer ready" : "Customer missing"} />
+            <div className="profile-statuses">
+              <StatusBadge status={profile?.customer ? "Customer ready" : "Customer missing"} />
+              {profile && (
+                <span className={`verification-status ${profile.phoneNumberConfirmed ? "verified" : "pending"}`}>
+                  {profile.phoneNumberConfirmed ? <CheckCircle2 size={14} /> : <Phone size={14} />}
+                  {profile.phoneNumberConfirmed ? "Phone verified" : "Phone verification needed"}
+                </span>
+              )}
+            </div>
           </div>
 
-          <form className="form-stack" onSubmit={onUpdateProfile}>
-            <div className="form-grid">
-              <Field label="First name">
-                <input value={profileDraft.firstName} onChange={(event) => setProfileDraft({ ...profileDraft, firstName: event.target.value })} />
-              </Field>
-              <Field label="Last name">
-                <input value={profileDraft.lastName} onChange={(event) => setProfileDraft({ ...profileDraft, lastName: event.target.value })} />
-              </Field>
+          <form className="settings-profile-form" onSubmit={onUpdateProfile}>
+            <div className="settings-field-grid">
+              <div className="settings-field-card">
+                <span className="settings-field-icon"><UserRound size={18} /></span>
+                <Field label="First name" hint="3 to 50 characters when changed">
+                  <input value={profileDraft.firstName} onChange={(event) => setProfileDraft({ ...profileDraft, firstName: event.target.value.slice(0, 50) })} maxLength={50} />
+                </Field>
+              </div>
+              <div className="settings-field-card">
+                <span className="settings-field-icon"><UserRound size={18} /></span>
+                <Field label="Last name" hint="3 to 50 characters when changed">
+                  <input value={profileDraft.lastName} onChange={(event) => setProfileDraft({ ...profileDraft, lastName: event.target.value.slice(0, 50) })} maxLength={50} />
+                </Field>
+              </div>
+              <div className="settings-field-card">
+                <span className="settings-field-icon"><AtSign size={18} /></span>
+                <Field label="Username" hint="3 to 20 letters, numbers, or underscores">
+                  <input
+                    value={profileDraft.username}
+                    onChange={(event) => setProfileDraft({ ...profileDraft, username: event.target.value.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20) })}
+                    minLength={3}
+                    maxLength={20}
+                    spellCheck={false}
+                  />
+                </Field>
+              </div>
+              <div className="settings-field-card">
+                <span className="settings-field-icon"><Mail size={18} /></span>
+                <Field label="Email" hint="Changing it requires email confirmation">
+                  <input type="email" value={profileDraft.email} onChange={(event) => setProfileDraft({ ...profileDraft, email: event.target.value.slice(0, 120) })} maxLength={120} spellCheck={false} />
+                </Field>
+              </div>
+              <div className="settings-field-card full">
+                <span className="settings-field-icon"><Phone size={18} /></span>
+                <Field label="Phone number" hint="Use international format, for example +201001234567">
+                  <input
+                    value={profileDraft.phoneNumber}
+                    onChange={(event) => setProfileDraft({ ...profileDraft, phoneNumber: normalizePhoneInput(event.target.value) })}
+                    inputMode="tel"
+                    maxLength={16}
+                  />
+                </Field>
+              </div>
             </div>
-            <Field label="Username">
-              <input value={profileDraft.username} onChange={(event) => setProfileDraft({ ...profileDraft, username: event.target.value })} />
-            </Field>
-            <Field label="Email">
-              <input type="email" value={profileDraft.email} onChange={(event) => setProfileDraft({ ...profileDraft, email: event.target.value })} />
-            </Field>
-            <Field label="Phone number">
-              <input value={profileDraft.phoneNumber} onChange={(event) => setProfileDraft({ ...profileDraft, phoneNumber: event.target.value })} />
-            </Field>
-            <button className="primary-button compact" type="submit" disabled={busy}>
-              <CheckCircle2 size={17} />
-              Save profile
-            </button>
+            <div className="settings-form-actions">
+              <p>Only changed fields are sent to the server.</p>
+              <button className="primary-button compact" type="submit" disabled={busy}>
+                <CheckCircle2 size={17} />
+                Save profile
+              </button>
+            </div>
           </form>
+
+          {profile?.phoneNumberConfirmed === false && (
+            <div className="verify-inline-card phone-verification-card">
+              <div className="verify-inline-header">
+                <div className="verify-inline-title">
+                  <Phone size={16} />
+                  <strong>Confirm your phone number</strong>
+                </div>
+                <button type="button" className="secondary-button compact" onClick={onResendCurrentPhone} disabled={busy || !profile.phoneNumber}>
+                  <Send size={15} />
+                  Send code
+                </button>
+              </div>
+              <p className="flow-note">
+                Send a code to <b>{profile.phoneNumber}</b>, then enter the six digits below.
+              </p>
+              <OtpInput
+                value={verifyDraft.phoneCode}
+                onChange={(value) => setVerifyDraft({ ...verifyDraft, phoneCode: value })}
+                onComplete={onVerifyCurrentPhone}
+                disabled={busy}
+                ariaLabel="Account phone verification code"
+              />
+              <p className="otp-auto-submit-note">Verification starts automatically after the sixth digit.</p>
+            </div>
+          )}
 
           {showProfileVerify === "email" && (
             <div className="verify-inline-card">
@@ -121,13 +194,14 @@ export function AccountPage(props: {
                 </button>
               </div>
               <form className="form-stack" onSubmit={onVerifyPendingPhone}>
-                <Field label="Verification code">
-                  <input value={verifyDraft.pendingPhoneCode} onChange={(event) => setVerifyDraft({ ...verifyDraft, pendingPhoneCode: event.target.value })} placeholder="6-digit code" maxLength={6} inputMode="numeric" />
-                </Field>
-                <button className="primary-button compact" type="submit" disabled={busy || !verifyDraft.pendingPhoneCode}>
-                  <CheckCircle2 size={17} />
-                  Verify phone
-                </button>
+                <OtpInput
+                  value={verifyDraft.pendingPhoneCode}
+                  onChange={(value) => setVerifyDraft({ ...verifyDraft, pendingPhoneCode: value })}
+                  onComplete={(code) => onVerifyPendingPhone(undefined, code)}
+                  disabled={busy}
+                  ariaLabel="New phone number verification code"
+                />
+                <p className="otp-auto-submit-note">Verification starts automatically after the sixth digit.</p>
               </form>
             </div>
           )}

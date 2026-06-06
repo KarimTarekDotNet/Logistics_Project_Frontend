@@ -1,35 +1,17 @@
-import { ArrowLeft, CheckCircle2, CircleDollarSign, KeyRound, LogIn, Moon, Plus, Send, ShieldCheck, Ship, Sun } from "lucide-react";
+import { ArrowLeft, Check, CheckCircle2, CircleDollarSign, KeyRound, LogIn, Moon, Plus, Send, ShieldCheck, Ship, Sun, X } from "lucide-react";
 import { BrandLogo } from "../components/brand/BrandLogo";
 import { BRAND_NAME, BRAND_TAGLINE } from "../constants/brand";
-import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Field, LoadingSpinner, PasswordInput, StatCard } from "../components/ui";
+import { useEffect, useState, type FormEvent } from "react";
+import { Field, LoadingSpinner, OtpInput, PasswordInput, StatCard } from "../components/ui";
 import type { RegisterForm, VerificationStep, VerifyDraft } from "../types";
 import { maskPhone } from "../utils/session";
 
-function OtpInput(props: { value: string; onChange: (value: string) => void }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const value = props.value.replace(/\D/g, "").slice(0, 6);
-  const cells = Array.from({ length: 6 }, (_, index) => value[index] ?? "");
-
+function Requirement(props: { met: boolean; children: string }) {
   return (
-    <div className="otp-control" onClick={() => inputRef.current?.focus()} role="group" aria-label="Phone verification code">
-      <input
-        ref={inputRef}
-        className="otp-hidden-input"
-        value={value}
-        onChange={(event) => props.onChange(event.target.value.replace(/\D/g, "").slice(0, 6))}
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        maxLength={6}
-      />
-      <div className="otp-boxes" aria-hidden="true">
-        {cells.map((cell, index) => (
-          <span className={cell ? "filled" : ""} key={index}>
-            {cell}
-          </span>
-        ))}
-      </div>
-    </div>
+    <li className={props.met ? "met" : "unmet"}>
+      <span>{props.met ? <Check size={13} /> : <X size={13} />}</span>
+      {props.children}
+    </li>
   );
 }
 
@@ -48,7 +30,7 @@ export function AuthPage(props: {
   onResendEmail: (event: FormEvent) => void;
   onConfirmEmail: (event: FormEvent) => void;
   onResendPhone: (event: FormEvent) => void;
-  onConfirmPhone: (event: FormEvent) => void;
+  onConfirmPhone: (event?: FormEvent, code?: string) => void;
   busy: boolean;
   publicRateCount: number;
   publicWorkflowCount: number;
@@ -106,6 +88,23 @@ export function AuthPage(props: {
       : `Resend in ${String(Math.floor(resendSeconds / 60)).padStart(2, "0")}:${String(resendSeconds % 60).padStart(2, "0")}`;
   const publicRateValue = <span className="metric-plus">{publicRateCount.toLocaleString()}<b>+</b></span>;
   const workflowValue = <span className="metric-plus">{publicWorkflowCount.toLocaleString()}<b>+</b></span>;
+  const usernameLengthValid = registerForm.userName.length >= 3 && registerForm.userName.length <= 30;
+  const usernameCharactersValid = /^[a-zA-Z0-9._-]+$/.test(registerForm.userName);
+  const passwordLengthValid = registerForm.password.length >= 8;
+  const passwordLetterValid = /[A-Za-z]/.test(registerForm.password);
+  const passwordNumberValid = /\d/.test(registerForm.password);
+  const passwordSpecialValid = /[@$!%*#?&]/.test(registerForm.password);
+  const passwordCharactersValid = /^[A-Za-z\d@$!%*#?&]*$/.test(registerForm.password);
+  const passwordsMatch = registerForm.confirmPassword.length > 0 && registerForm.confirmPassword === registerForm.password;
+  const credentialsValid =
+    usernameLengthValid &&
+    usernameCharactersValid &&
+    passwordLengthValid &&
+    passwordLetterValid &&
+    passwordNumberValid &&
+    passwordSpecialValid &&
+    passwordCharactersValid &&
+    passwordsMatch;
 
   return (
     <main className="auth-page">
@@ -217,11 +216,13 @@ export function AuthPage(props: {
                   <p className="verification-note">
                     Phone verification uses the number entered during registration and cannot be changed here.
                   </p>
-                  <OtpInput value={verifyDraft.phoneCode} onChange={(value) => setVerifyDraft({ ...verifyDraft, phoneCode: value })} />
-                  <button className="primary-button" type="submit" disabled={busy || !hasPhoneForVerification || verifyDraft.phoneCode.length !== 6}>
-                    <CheckCircle2 size={16} />
-                    Verify phone number
-                  </button>
+                  <OtpInput
+                    value={verifyDraft.phoneCode}
+                    onChange={(value) => setVerifyDraft({ ...verifyDraft, phoneCode: value })}
+                    onComplete={(code) => onConfirmPhone(undefined, code)}
+                    disabled={busy || !hasPhoneForVerification}
+                  />
+                  <p className="otp-auto-submit-note">Verification starts automatically after the sixth digit.</p>
                 </form>
 
                 <form
@@ -304,8 +305,12 @@ export function AuthPage(props: {
                   </Field>
                 </div>
                 <Field label="Username">
-                  <input value={registerForm.userName} onChange={(event) => setRegisterForm({ ...registerForm, userName: event.target.value.replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 30) })} maxLength={30} spellCheck={false} required />
+                  <input value={registerForm.userName} onChange={(event) => setRegisterForm({ ...registerForm, userName: event.target.value.replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 30) })} minLength={3} maxLength={30} spellCheck={false} required />
                 </Field>
+                <ul className="input-requirements" aria-live="polite">
+                  <Requirement met={usernameLengthValid}>Username is 3 to 30 characters</Requirement>
+                  <Requirement met={usernameCharactersValid}>Uses letters, numbers, dot, underscore, or hyphen only</Requirement>
+                </ul>
                 <Field label="Email">
                   <input type="email" value={registerForm.email} onChange={(event) => setRegisterForm({ ...registerForm, email: event.target.value.slice(0, 120) })} maxLength={120} spellCheck={false} required />
                 </Field>
@@ -335,7 +340,25 @@ export function AuthPage(props: {
                     />
                   </Field>
                 </div>
-                <button className="primary-button auth-submit" type="submit" disabled={busy}>
+                <div className="credential-requirements">
+                  <div>
+                    <strong>Password requirements</strong>
+                    <ul className="input-requirements" aria-live="polite">
+                      <Requirement met={passwordLengthValid}>At least 8 characters</Requirement>
+                      <Requirement met={passwordLetterValid}>Contains a letter</Requirement>
+                      <Requirement met={passwordNumberValid}>Contains a number</Requirement>
+                      <Requirement met={passwordSpecialValid}>Contains one of @$!%*#?&</Requirement>
+                      <Requirement met={passwordCharactersValid}>Uses only letters, numbers, and allowed special characters</Requirement>
+                    </ul>
+                  </div>
+                  <div>
+                    <strong>Confirmation</strong>
+                    <ul className="input-requirements" aria-live="polite">
+                      <Requirement met={passwordsMatch}>Passwords match</Requirement>
+                    </ul>
+                  </div>
+                </div>
+                <button className="primary-button auth-submit" type="submit" disabled={busy || !credentialsValid}>
                   {busy ? <LoadingSpinner size="sm" /> : <Plus size={18} />}
                   {busy ? "Creating account" : "Create account"}
                 </button>

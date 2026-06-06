@@ -991,8 +991,8 @@ export default function App() {
 
     const [firstName = "", ...rest] = profile.name.split(" ").filter(Boolean);
     setProfileDraft({
-      firstName,
-      lastName: rest.join(" "),
+      firstName: profile.firstName ?? firstName,
+      lastName: profile.lastName ?? rest.join(" "),
       username: profile.username ?? "",
       email: profile.email ?? "",
       phoneNumber: profile.phoneNumber ?? ""
@@ -1692,9 +1692,9 @@ export default function App() {
     );
   }
 
-  async function handleConfirmPhone(event: FormEvent) {
-    event.preventDefault();
-    const code = verifyDraft.phoneCode.replace(/\D/g, "").slice(0, 6);
+  async function handleConfirmPhone(event?: FormEvent, completedCode?: string) {
+    event?.preventDefault();
+    const code = (completedCode ?? verifyDraft.phoneCode).replace(/\D/g, "").slice(0, 6);
 
     if (code.length !== 6) {
       pushToast("error", "Invalid verification code", "Enter the 6-digit code sent to your registered phone.");
@@ -2758,23 +2758,75 @@ export default function App() {
 
   async function handleUpdateProfile(event: FormEvent) {
     event.preventDefault();
-    if (!session?.accessToken) return;
+    if (!session?.accessToken || !profile) return;
+
+    const [fallbackFirstName = "", ...fallbackLastName] = profile.name.split(" ").filter(Boolean);
+    const original = {
+      firstName: (profile.firstName ?? fallbackFirstName).trim(),
+      lastName: (profile.lastName ?? fallbackLastName.join(" ")).trim(),
+      username: profile.username.trim(),
+      email: profile.email.trim(),
+      phoneNumber: profile.phoneNumber.trim()
+    };
+    const next = {
+      firstName: profileDraft.firstName.trim(),
+      lastName: profileDraft.lastName.trim(),
+      username: profileDraft.username.trim(),
+      email: profileDraft.email.trim(),
+      phoneNumber: profileDraft.phoneNumber.trim()
+    };
+    const body: {
+      firstName?: string;
+      lastName?: string;
+      username?: string;
+      email?: string;
+      phoneNumber?: string;
+    } = {};
+
+    if (next.firstName !== original.firstName) body.firstName = next.firstName;
+    if (next.lastName !== original.lastName) body.lastName = next.lastName;
+    if (next.username !== original.username) body.username = next.username;
+    if (next.email !== original.email) body.email = next.email;
+    if (next.phoneNumber !== original.phoneNumber) body.phoneNumber = next.phoneNumber;
+
+    if (body.firstName !== undefined && (body.firstName.length < 3 || body.firstName.length > 50)) {
+      pushToast("error", "Check first name", "First name must be between 3 and 50 characters.");
+      return;
+    }
+    if (body.lastName !== undefined && (body.lastName.length < 3 || body.lastName.length > 50)) {
+      pushToast("error", "Check last name", "Last name must be between 3 and 50 characters.");
+      return;
+    }
+    if (body.username !== undefined && !/^[a-zA-Z0-9_]{3,20}$/.test(body.username)) {
+      pushToast("error", "Check username", "Username must be 3 to 20 characters using letters, numbers, or underscores.");
+      return;
+    }
+    if (body.email !== undefined && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+      pushToast("error", "Check email", "Enter a valid email address.");
+      return;
+    }
+    if (body.phoneNumber !== undefined && !/^\+?[1-9]\d{1,14}$/.test(body.phoneNumber)) {
+      pushToast("error", "Check phone number", "Use a valid international phone number, for example +201001234567.");
+      return;
+    }
+    if (body.email !== undefined && body.phoneNumber !== undefined) {
+      pushToast("info", "Save contact changes separately", "Update the email first, confirm it, then update the phone number.");
+      return;
+    }
+    if (Object.keys(body).length === 0) {
+      pushToast("info", "Profile is up to date", "No profile fields were changed.");
+      return;
+    }
 
     await runMutation(
       "Profile update submitted",
       async () => {
-        const response = await api.updateProfile(session.accessToken, {
-          firstName: profileDraft.firstName.trim() || undefined,
-          lastName: profileDraft.lastName.trim() || undefined,
-          username: profileDraft.username.trim() || undefined,
-          email: profileDraft.email.trim() || undefined,
-          phoneNumber: profileDraft.phoneNumber.trim() || undefined
-        });
+        const response = await api.updateProfile(session.accessToken, body);
 
         if (response.updatedProfile) setProfile(response.updatedProfile);
 
-        const emailChanged = profileDraft.email.trim() && profileDraft.email.trim() !== profile?.email;
-        const phoneChanged = profileDraft.phoneNumber.trim() && profileDraft.phoneNumber.trim() !== profile?.phoneNumber;
+        const emailChanged = body.email !== undefined;
+        const phoneChanged = body.phoneNumber !== undefined;
 
         if (response.isEmailVerificationSent || emailChanged) {
           setVerifyDraft((current) => ({ ...current, email: profileDraft.email.trim() || current.email }));
@@ -2798,6 +2850,50 @@ export default function App() {
     );
   }
 
+  async function handleResendCurrentPhone() {
+    if (!profile?.phoneNumber || busy) return;
+
+    await runMutation(
+      "Phone code sent",
+      async () => {
+        const response = await api.resendPhoneOtp(profile.phoneNumber);
+        setVerifyDraft((current) => ({ ...current, phone: profile.phoneNumber, phoneCode: "" }));
+        pushToast("success", "Phone verification code sent", response.message);
+        return response;
+      },
+      { successToast: false, refresh: false, confirm: false }
+    );
+  }
+
+  async function handleVerifyCurrentPhone(completedCode?: string) {
+    if (!profile?.phoneNumber || busy) return;
+    const code = (completedCode ?? verifyDraft.phoneCode).replace(/\D/g, "").slice(0, 6);
+
+    if (code.length !== 6) return;
+
+    setBusy(true);
+    try {
+      const response = await api.confirmPhone(profile.phoneNumber, code);
+      const phoneConfirmed = response.isAuthenticated || response.message.toLowerCase().includes("phone number confirmed");
+      if (!phoneConfirmed) {
+        pushToast("error", "Phone verification failed", "The code is invalid or expired.");
+        return;
+      }
+
+      setProfile((current) => current ? { ...current, phoneNumberConfirmed: true } : current);
+      setVerifyDraft((current) => ({ ...current, phoneCode: "" }));
+      pushToast("success", "Phone verified", response.message || "Your phone number has been confirmed.");
+    } catch (error) {
+      if (isBackendUnavailableError(error)) {
+        handleBackendUnavailable();
+        return;
+      }
+      pushToast("error", "Phone verification failed", getFriendlyErrorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleUpdatePassword(event: FormEvent) {
     event.preventDefault();
     if (!session?.accessToken) return;
@@ -2818,14 +2914,16 @@ export default function App() {
     );
   }
 
-  async function handleVerifyPendingPhone(event: FormEvent) {
-    event.preventDefault();
+  async function handleVerifyPendingPhone(event?: FormEvent, completedCode?: string) {
+    event?.preventDefault();
     if (!session?.accessToken) return;
+    const code = (completedCode ?? verifyDraft.pendingPhoneCode).replace(/\D/g, "").slice(0, 6);
+    if (code.length !== 6) return;
 
     await runMutation(
       "Phone change verified",
       async () => {
-        const response = await api.verifyPhoneChange(session.accessToken, verifyDraft.pendingPhoneCode.trim());
+        const response = await api.verifyPhoneChange(session.accessToken, code);
         if (response.updatedProfile) setProfile(response.updatedProfile);
         setVerifyDraft((current) => ({ ...current, pendingPhoneCode: "" }));
         setShowProfileVerify(null);
@@ -3248,6 +3346,8 @@ export default function App() {
         setCustomerDraft={setCustomerDraft}
         onUpdateProfile={handleUpdateProfile}
         onUpdatePassword={handleUpdatePassword}
+        onResendCurrentPhone={handleResendCurrentPhone}
+        onVerifyCurrentPhone={handleVerifyCurrentPhone}
         onVerifyPendingPhone={handleVerifyPendingPhone}
         onSaveCustomer={handleSaveCustomer}
         onDeleteCustomer={handleDeleteCustomer}

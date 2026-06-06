@@ -302,9 +302,12 @@ export type Customer = {
 
 export type ProfileResponse = {
   name: string;
+  firstName?: string;
+  lastName?: string;
   username: string;
   email: string;
   phoneNumber: string;
+  phoneNumberConfirmed: boolean;
   customer?: Customer;
 };
 

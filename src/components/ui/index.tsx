@@ -14,6 +14,7 @@ import { compactStatus } from "../../utils/format";
 import { statusClass } from "../../utils/search";
 
 export { LoadingSpinner } from "./LoadingSpinner";
+export { OtpInput } from "./OtpInput";
 
 export function SectionHeader(props: { icon: ReactNode; title: string; meta?: string; children?: ReactNode }) {
   return (
