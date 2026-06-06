@@ -113,6 +113,7 @@ export function ShipmentsPage(props: {
   onDeleteItem: (id: string) => void;
   onConfirmItems: () => void;
   onCancelItemUpdate: () => void;
+  hasUnbilledItems: boolean;
   hasDraftInvoice: boolean;
   onContinueInvoice: () => void;
 }) {
@@ -150,6 +151,7 @@ export function ShipmentsPage(props: {
     onDeleteItem,
     onConfirmItems,
     onCancelItemUpdate,
+    hasUnbilledItems,
     hasDraftInvoice,
     onContinueInvoice
   } = props;
@@ -444,6 +446,7 @@ export function ShipmentsPage(props: {
                 onDeleteItem={onDeleteItem}
                 onConfirmItems={onConfirmItems}
                 onCancelItemUpdate={onCancelItemUpdate}
+                hasUnbilledItems={hasUnbilledItems}
               />
             </>
           ) : (
@@ -503,6 +506,7 @@ function CargoItems(props: {
   onDeleteItem: (id: string) => void;
   onConfirmItems: () => void;
   onCancelItemUpdate: () => void;
+  hasUnbilledItems: boolean;
 }) {
   const {
     shipmentItems,
@@ -520,7 +524,8 @@ function CargoItems(props: {
     onCancelItemEdit,
     onDeleteItem,
     onConfirmItems,
-    onCancelItemUpdate
+    onCancelItemUpdate,
+    hasUnbilledItems
   } = props;
   const grossDraft = Number(itemDraft.grossWeight);
   const volumeDraft = Number(itemDraft.volumeCbm);
@@ -530,6 +535,7 @@ function CargoItems(props: {
       : 0;
   const hasItems = shipmentItems.length > 0;
   const isUpdatingFromWorkflow = Boolean(itemUpdateReturnStep);
+  const canConfirmItems = isUpdatingFromWorkflow || hasUnbilledItems;
   const returnLabel = itemUpdateReturnStep === "invoice" ? "invoice review" : "charge generation";
 
   return (
@@ -597,7 +603,7 @@ function CargoItems(props: {
         </form>
       )}
 
-      {canEditItems && (
+      {canEditItems && canConfirmItems && (
         <div className="cargo-confirm-strip">
           <div>
             <strong>{isUpdatingFromWorkflow ? "Review cargo updates" : "Confirm cargo list"}</strong>

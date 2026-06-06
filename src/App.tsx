@@ -7,6 +7,7 @@ import { DEFAULT_CURRENCY, THEME_KEY } from "./constants/logistics";
 import {
   buildShipmentItemPayload,
   emptyShipmentItemDraft,
+  getUnbilledShipmentItems,
   shipmentItemToDraft
 } from "./features/shipments/shipmentItems";
 import { getWorkflowCharges } from "./features/shipments/shipmentCharges";
@@ -398,6 +399,7 @@ export default function App() {
   const [pendingActionConfirmation, setPendingActionConfirmation] = useState<PendingActionConfirmation | null>(null);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoicesResolvedShipmentId, setInvoicesResolvedShipmentId] = useState("");
   const [shipmentWorkflowStep, setShipmentWorkflowStep] = useState<ShipmentWorkflowStep | null>(null);
   const [workflowInvoice, setWorkflowInvoice] = useState<Invoice | null>(null);
   const [onlinePaymentInvoiceId, setOnlinePaymentInvoiceId] = useState<string | null>(null);
@@ -545,6 +547,12 @@ export default function App() {
       String(invoice.paymentStatus).toLowerCase() === "draft" &&
       (!invoice.shipment?.id || invoice.shipment.id === selectedShipmentId)
   );
+  const selectedShipmentItems =
+    workspace.shipmentItems.length > 0 ? workspace.shipmentItems : (selectedShipment?.items ?? []);
+  const unbilledShipmentItems =
+    invoicesResolvedShipmentId === selectedShipmentId
+      ? getUnbilledShipmentItems(selectedShipmentItems, invoices)
+      : [];
   const shipmentQuoteOptions = isPrivileged
     ? data.quotes
     : data.quotes.length > 0
@@ -1028,19 +1036,14 @@ export default function App() {
   }, [selectedShipment]);
 
   useEffect(() => {
-    const hasInvoiceLookupSignal =
-      workspace.timeline.some((item) => item.type === "InvoiceCreated" || item.category === "Invoice") ||
-      ["paymentpending", "paymentcompleted", "telexreleased", "delivered", "closed"].includes(
-        normalizeStatusKey(selectedShipment?.status)
-      );
     const shouldLookupInvoices =
       Boolean(session?.accessToken && selectedShipmentId) &&
       canQueryInvoicesForShipment(selectedShipment) &&
-      (activeView === "finance" ||
-        (hasInvoiceLookupSignal && (shipmentWorkflowStep !== null || activeView === "shipments")));
+      (activeView === "finance" || activeView === "shipments" || shipmentWorkflowStep !== null);
 
     if (!shouldLookupInvoices) {
       setInvoices([]);
+      setInvoicesResolvedShipmentId("");
       return;
     }
 
@@ -1048,16 +1051,23 @@ export default function App() {
     if (!token) return;
 
     let cancelled = false;
+    setInvoicesResolvedShipmentId("");
     void (async () => {
       try {
         const nextInvoices = await api.getInvoicesByShipment(token, selectedShipmentId);
-        if (!cancelled) setInvoices(nextInvoices);
+        if (!cancelled) {
+          setInvoices(nextInvoices);
+          setInvoicesResolvedShipmentId(selectedShipmentId);
+        }
       } catch (error) {
         if (!cancelled && isBackendUnavailableError(error)) {
           handleBackendUnavailable();
           return;
         }
-        if (!cancelled && isNotFoundError(error)) setInvoices([]);
+        if (!cancelled && isNotFoundError(error)) {
+          setInvoices([]);
+          setInvoicesResolvedShipmentId(selectedShipmentId);
+        }
       }
     })();
 
@@ -1066,12 +1076,11 @@ export default function App() {
     };
   }, [
     activeView,
-    selectedShipment,
+    selectedShipment?.id,
     selectedShipmentId,
     session?.accessToken,
     shipmentWorkflowStep,
-    handleBackendUnavailable,
-    workspace.timeline
+    handleBackendUnavailable
   ]);
 
   useEffect(() => {
@@ -1524,6 +1533,7 @@ export default function App() {
       setData(initialData);
       setProfile(null);
       setInvoices([]);
+      setInvoicesResolvedShipmentId("");
       setWorkflowInvoice(null);
       setOnlinePaymentInvoiceId(null);
       setShipmentWorkflowStep(null);
@@ -2186,6 +2196,7 @@ export default function App() {
     if (!isValidId(id)) return;
     workspace.setSelectedShipmentId(id);
     setInvoices([]);
+    setInvoicesResolvedShipmentId("");
     setWorkflowInvoice(null);
     setOnlinePaymentInvoiceId(null);
     setShipmentWorkflowStep(null);
@@ -2270,9 +2281,15 @@ export default function App() {
   function handleConfirmShipmentItems() {
     if (!selectedShipment) return;
     const hasItems = workspace.shipmentItems.length > 0 || (selectedShipment.items?.length ?? 0) > 0;
+    const hasConfirmableItems = Boolean(itemUpdateReturnStep || unbilledShipmentItems.length > 0);
 
     if (!hasItems) {
       pushToast("error", "Cargo items needed", "Add at least one cargo item before continuing to charges.");
+      return;
+    }
+
+    if (!hasConfirmableItems) {
+      pushToast("info", "Cargo already invoiced", "Add or update a cargo item before starting another invoice cycle.");
       return;
     }
 
@@ -2308,6 +2325,7 @@ export default function App() {
     try {
       const nextInvoices = await api.getInvoicesByShipment(session.accessToken, selectedShipment.id);
       setInvoices(nextInvoices);
+      setInvoicesResolvedShipmentId(selectedShipment.id);
     } catch (error) {
       if (isBackendUnavailableError(error)) {
         handleBackendUnavailable();
@@ -2316,6 +2334,7 @@ export default function App() {
       const message = getFriendlyErrorMessage(error);
       if (isNotFoundError(error) || message.toLowerCase().includes("invoice not found")) {
         setInvoices([]);
+        setInvoicesResolvedShipmentId(selectedShipment.id);
         pushToast("info", "No invoices found", "This shipment does not have invoices yet.");
       } else {
         pushToast("error", "Invoice lookup failed", message);
@@ -2435,6 +2454,7 @@ export default function App() {
       }
 
       setInvoices(nextInvoices);
+      setInvoicesResolvedShipmentId(shipmentId);
       workspace.setCharges(nextCharges);
       await workspace.loadShipmentRelated(shipmentId);
       const nextWorkflowCharges = getWorkflowCharges(nextCharges, restoredShipment);
@@ -3167,6 +3187,7 @@ export default function App() {
           onDeleteItem={handleDeleteShipmentItem}
           onConfirmItems={handleConfirmShipmentItems}
           onCancelItemUpdate={handleCancelItemUpdate}
+          hasUnbilledItems={unbilledShipmentItems.length > 0}
           hasDraftInvoice={Boolean(draftInvoiceForSelectedShipment)}
           onContinueInvoice={handleContinueInvoiceFlow}
         />

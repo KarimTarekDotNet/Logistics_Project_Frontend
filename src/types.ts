@@ -217,6 +217,8 @@ export type ShipmentItem = {
   isHazardous: boolean;
   requiredTemperatureCelsius?: number | null;
   marksAndNumbers?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
 };
 
 export type ShipmentCharge = {

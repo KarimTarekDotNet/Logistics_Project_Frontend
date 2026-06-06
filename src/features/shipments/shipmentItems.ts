@@ -1,4 +1,4 @@
-import type { ShipmentItem, ShipmentItemDraft } from "../../types";
+import type { Invoice, ShipmentItem, ShipmentItemDraft } from "../../types";
 
 const CBM_TO_KG_FACTOR = 167;
 
@@ -10,6 +10,39 @@ const itemLockedStatuses = new Set([
   "Closed",
   "Cancelled"
 ]);
+
+const invoicedPaymentStatuses = new Set(["pending", "partiallypaid", "paid"]);
+
+function normalizeStatus(value?: string | null) {
+  return String(value ?? "").replace(/[\s_-]+/g, "").toLowerCase();
+}
+
+function toTimestamp(value?: string | null) {
+  const timestamp = value ? Date.parse(value) : Number.NaN;
+  return Number.isFinite(timestamp) ? timestamp : Number.NaN;
+}
+
+function latestTimestamp(values: Array<string | null | undefined>) {
+  const timestamps = values.map(toTimestamp).filter(Number.isFinite);
+  return timestamps.length > 0 ? Math.max(...timestamps) : Number.NaN;
+}
+
+function getInvoiceBillingTimestamp(invoice: Invoice) {
+  if (!invoicedPaymentStatuses.has(normalizeStatus(invoice.paymentStatus))) return Number.NaN;
+
+  return latestTimestamp([invoice.issuedAt, ...(invoice.charges ?? []).map((charge) => charge.createdAt)]);
+}
+
+export function getUnbilledShipmentItems(items: ShipmentItem[], invoices: Invoice[]) {
+  const billingTimestamps = invoices.map(getInvoiceBillingTimestamp).filter(Number.isFinite);
+  if (billingTimestamps.length === 0) return items;
+
+  const latestBillingTimestamp = Math.max(...billingTimestamps);
+  return items.filter((item) => {
+    const itemTimestamp = latestTimestamp([item.createdAt, item.updatedAt]);
+    return Number.isFinite(itemTimestamp) && itemTimestamp > latestBillingTimestamp;
+  });
+}
 
 export function emptyShipmentItemDraft(): ShipmentItemDraft {
   return {
