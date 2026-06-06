@@ -101,9 +101,8 @@ export function AppShell(props: {
             </div>
           </button>
           <button className="sidebar-mode-row" type="button" onClick={props.onToggleTheme}>
-            {props.theme === "dark" ? <Moon size={17} /> : <Sun size={17} />}
-            <span>{props.theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
-            <b>{props.theme === "dark" ? "ON" : "OFF"}</b>
+            {props.theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+            <span>{props.theme === "dark" ? "Use light theme" : "Use dark theme"}</span>
           </button>
           <button className="sidebar-footer-logout" type="button" onClick={props.onLogout}>
             <LogOut size={17} />

@@ -2,8 +2,7 @@ import { BarChart3, Box, CheckCircle2, CircleDollarSign, Eye, Pencil, Plus, Rota
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ConfirmDialog, EmptyState, EntityActions, Field, MetricLine, PanelTitle, SectionHeader, StatusBadge } from "../components/ui";
 import { CURRENCY_LOCK_NOTE, DEFAULT_CURRENCY } from "../constants/logistics";
-import { RateDetailsPage } from "./RateDetailsPage";
-import type { AuthSession, Carrier, ContainerType, MarketAnalytics, QuoteRequest, Rate, RateBookFilterDraft, RateDraft, RateRecommendationDraft, RateRecommendationResponse, RecommendationPriority, Route } from "../types";
+import type { Carrier, ContainerType, MarketAnalytics, Rate, RateBookFilterDraft, RateDraft, RateRecommendationDraft, RateRecommendationResponse, RecommendationPriority, Route } from "../types";
 import { formatMoney, formatShortDate, isoToLocalDateTime } from "../utils/format";
 
 export type AnalyticsDraft = {
@@ -70,12 +69,12 @@ export function PricingPage(props: {
   carriers: Carrier[];
   routes: Route[];
   containerTypes: ContainerType[];
-  session: AuthSession;
   isPrivileged: boolean;
   isAdmin: boolean;
-  isUser: boolean;
   busy: boolean;
-  theme: "light" | "dark";
+  mode: "ratebook" | "insights";
+  onModeChange: (mode: "ratebook" | "insights") => void;
+  onOpenRate: (rate: Rate) => void;
   draft: RateDraft;
   setDraft: (draft: RateDraft) => void;
   analyticsDraft: AnalyticsDraft;
@@ -93,22 +92,18 @@ export function PricingPage(props: {
   onResetRateFilters: () => void;
   onLoadAnalytics: (event: FormEvent) => void;
   onLoadRecommendations: (event: FormEvent) => void;
-  onToggleTheme: () => void;
-  onRateRequestCreated: (request: QuoteRequest) => void;
-  hasCustomerProfile: boolean;
-  onCreateCustomerProfile: () => void;
 }) {
   const {
     rates,
     carriers,
     routes,
     containerTypes,
-    session,
     isPrivileged,
     isAdmin,
-    isUser,
     busy,
-    theme,
+    mode,
+    onModeChange,
+    onOpenRate,
     draft,
     setDraft,
     analyticsDraft,
@@ -125,17 +120,12 @@ export function PricingPage(props: {
     onApplyRateFilters,
     onResetRateFilters,
     onLoadAnalytics,
-    onLoadRecommendations,
-    onToggleTheme,
-    onRateRequestCreated,
-    hasCustomerProfile,
-    onCreateCustomerProfile
+    onLoadRecommendations
   } = props;
   const [filterDraft, setFilterDraft] = useState<RateBookFilterDraft>(rateFilters);
   const [editingRate, setEditingRate] = useState<Rate | null>(null);
   const [editDraft, setEditDraft] = useState<RateDraft | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [selectedRateId, setSelectedRateId] = useState<string | null>(null);
 
   useEffect(() => {
     setFilterDraft(rateFilters);
@@ -167,16 +157,10 @@ export function PricingPage(props: {
     const start = Math.max(1, currentPage - 2);
     return Array.from({ length: 5 }, (_, index) => start + index);
   }, [currentPage]);
-  const selectedRate = useMemo(() => rates.find((rate) => rate.id === selectedRateId) ?? null, [rates, selectedRateId]);
 
   function applyFilterDraft(nextDraft: RateBookFilterDraft) {
     setFilterDraft(nextDraft);
     onApplyRateFilters(nextDraft);
-  }
-
-  function openRateDetails(rateId: string) {
-    setSelectedRateId(rateId);
-    window.setTimeout(() => document.getElementById("rate-details-inline")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   }
 
   async function submitEdit(event: FormEvent) {
@@ -191,10 +175,21 @@ export function PricingPage(props: {
 
   return (
     <div className="view-stack">
-      <SectionHeader icon={<CircleDollarSign size={22} />} title="Pricing" meta={`${rates.length} rate cards`} />
+      <SectionHeader icon={<CircleDollarSign size={22} />} title="Pricing" meta={`${rates.length} rate cards`}>
+        <div className="workspace-tabs pricing-tabs">
+          <button className={mode === "ratebook" ? "active" : ""} type="button" onClick={() => onModeChange("ratebook")}>
+            <Box size={16} />
+            Rate book
+          </button>
+          <button className={mode === "insights" ? "active" : ""} type="button" onClick={() => onModeChange("insights")}>
+            <BarChart3 size={16} />
+            Insights
+          </button>
+        </div>
+      </SectionHeader>
 
-      <div className="two-column pricing-top">
-        {isPrivileged && (
+      {mode === "ratebook" && isPrivileged && (
+        <div className="pricing-create-region">
           <section className="panel">
             <PanelTitle icon={<Plus size={18} />} title={editingRate ? "Edit rate" : "New rate"} />
             <form className="rate-form" onSubmit={editingRate ? submitEdit : onCreateRate}>
@@ -389,8 +384,11 @@ export function PricingPage(props: {
               </div>
             </form>
           </section>
-        )}
+        </div>
+      )}
 
+      {mode === "insights" && (
+        <div className="pricing-insights-grid">
         <section className="panel">
           <PanelTitle icon={<BarChart3 size={18} />} title="Market analytics" />
           <form className="form-stack" onSubmit={onLoadAnalytics}>
@@ -431,11 +429,36 @@ export function PricingPage(props: {
             </button>
           </form>
           {analytics ? (
-            <div className="analytics-grid">
-              <MetricLine label="Cheapest" value={formatMoney(analytics.cheapestPrice, analytics.currency)} />
-              <MetricLine label="Average" value={formatMoney(analytics.averagePrice, analytics.currency)} />
-              <MetricLine label="Highest" value={formatMoney(analytics.highestPrice, analytics.currency)} />
-              <MetricLine label="Active count" value={analytics.activeCount} />
+            <div className="analytics-dashboard">
+              <div className="analytics-grid">
+                <MetricLine label="Cheapest" value={formatMoney(analytics.cheapestPrice, analytics.currency)} />
+                <MetricLine label="Average" value={formatMoney(analytics.averagePrice, analytics.currency)} />
+                <MetricLine label="Highest" value={formatMoney(analytics.highestPrice, analytics.currency)} />
+                <MetricLine label="Active count" value={analytics.activeCount} />
+              </div>
+              <div className="analytics-visuals">
+                <div className="analytics-ring" aria-label={`${analytics.activeCount} active rates`}>
+                  <div>
+                    <strong>{analytics.activeCount}</strong>
+                    <span>active rates</span>
+                  </div>
+                </div>
+                <div className="price-comparison-chart" aria-label="Market price comparison">
+                  {[
+                    { label: "Cheapest", value: analytics.cheapestPrice },
+                    { label: "Average", value: analytics.averagePrice },
+                    { label: "Highest", value: analytics.highestPrice }
+                  ].map((item) => (
+                    <div className="price-comparison-row" key={item.label}>
+                      <span>{item.label}</span>
+                      <div>
+                        <i style={{ width: `${Math.max(8, (item.value / Math.max(analytics.highestPrice, 1)) * 100)}%` }} />
+                      </div>
+                      <b>{formatMoney(item.value, analytics.currency)}</b>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : (
             <p className="panel-note">Select a route and container type to review live USD market analytics.</p>
@@ -547,7 +570,7 @@ export function PricingPage(props: {
                         <span>{item.score}/100 score</span>
                         {item.transitDays != null && <span>{item.transitDays} transit days</span>}
                         <span>Valid to {formatShortDate(item.rate.validTo)}</span>
-                        <button className="inline-link inline-action" type="button" onClick={() => openRateDetails(item.rate.id)}>
+                        <button className="inline-link inline-action" type="button" onClick={() => onOpenRate(item.rate)}>
                           <Eye size={13} />
                           Details
                         </button>
@@ -565,25 +588,9 @@ export function PricingPage(props: {
           )}
         </section>
       </div>
-
-      {selectedRateId && (
-        <div id="rate-details-inline" className="inline-rate-details">
-          <RateDetailsPage
-            rateId={selectedRateId}
-            session={session}
-            isUser={isUser}
-            hasCustomerProfile={hasCustomerProfile}
-            theme={theme}
-            onToggleTheme={onToggleTheme}
-            initialRate={selectedRate ?? undefined}
-            embedded
-            onBack={() => setSelectedRateId(null)}
-            onCreateCustomerProfile={onCreateCustomerProfile}
-            onRequestCreated={onRateRequestCreated}
-          />
-        </div>
       )}
 
+      {mode === "ratebook" && (
       <section className="panel">
         <PanelTitle icon={<Box size={18} />} title="Rate book" meta={`${rates.length} shown`} />
         <form
@@ -732,7 +739,7 @@ export function PricingPage(props: {
                 <div className="rate-list-right">
                   <b className="rate-price">{formatMoney(rate.price, rate.currency)}</b>
                   <StatusBadge status={rate.isActive ? "Active" : "Inactive"} />
-                  <button className="mini-button" type="button" onClick={() => openRateDetails(rate.id)} title="Open rate details">
+                  <button className="mini-button" type="button" onClick={() => onOpenRate(rate)} title="Open rate details">
                     <Eye size={14} />
                     Details
                   </button>
@@ -807,6 +814,7 @@ export function PricingPage(props: {
           </div>
         </div>
       </section>
+      )}
 
       <ConfirmDialog
         open={Boolean(deleteId)}
@@ -819,7 +827,6 @@ export function PricingPage(props: {
         onConfirm={() => {
           if (!deleteId) return;
           onDeleteRate(deleteId);
-          if (selectedRateId === deleteId) setSelectedRateId(null);
           setDeleteId(null);
         }}
       />

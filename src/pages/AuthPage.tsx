@@ -70,14 +70,20 @@ export function AuthPage(props: {
   }, [authMode, verificationStep, verifyDraft.phone]);
 
   useEffect(() => {
-    if (authMode !== "verify" || verificationStep !== "phone" || resendSeconds <= 0) return;
+    if (authMode !== "verify" || verificationStep !== "phone") return;
 
     const timer = window.setInterval(() => {
-      setResendSeconds((current) => Math.max(0, current - 1));
+      setResendSeconds((current) => {
+        if (current <= 1) {
+          window.clearInterval(timer);
+          return 0;
+        }
+        return current - 1;
+      });
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [authMode, resendSeconds, verificationStep]);
+  }, [authMode, verificationStep]);
 
   const hasPhoneForVerification = verifyDraft.phone.trim().length > 0;
   const canResendPhone = verificationStep === "phone" && resendSeconds === 0 && hasPhoneForVerification;
@@ -315,44 +321,40 @@ export function AuthPage(props: {
                   <input type="email" value={registerForm.email} onChange={(event) => setRegisterForm({ ...registerForm, email: event.target.value.slice(0, 120) })} maxLength={120} spellCheck={false} required />
                 </Field>
                 <div className="form-grid">
-                  <Field label="Country code">
-                    <input value={registerForm.countryCode} onChange={(event) => setRegisterForm({ ...registerForm, countryCode: event.target.value.replace(/[^\d+]/g, "").slice(0, 5) })} maxLength={5} inputMode="tel" required />
+                  <Field label="Country code" hint="More country options will be available in a future update.">
+                    <input value="+20" readOnly aria-readonly="true" />
                   </Field>
                   <Field label="Phone number">
                     <input value={registerForm.phoneNumber} onChange={(event) => setRegisterForm({ ...registerForm, phoneNumber: event.target.value.replace(/\D/g, "").slice(0, 15) })} maxLength={15} inputMode="tel" required />
                   </Field>
                 </div>
-                <div className="form-grid">
-                  <Field label="Password">
-                    <PasswordInput
-                      value={registerForm.password}
-                      onChange={(event) => setRegisterForm({ ...registerForm, password: event.currentTarget.value })}
-                      maxLength={128}
-                      required
-                    />
-                  </Field>
-                  <Field label="Confirm password">
-                    <PasswordInput
-                      value={registerForm.confirmPassword}
-                      onChange={(event) => setRegisterForm({ ...registerForm, confirmPassword: event.currentTarget.value })}
-                      maxLength={128}
-                      required
-                    />
-                  </Field>
-                </div>
-                <div className="credential-requirements">
-                  <div>
-                    <strong>Password requirements</strong>
+                <div className="form-grid credential-field-grid">
+                  <div className="credential-field">
+                    <Field label="Password">
+                      <PasswordInput
+                        value={registerForm.password}
+                        onChange={(event) => setRegisterForm({ ...registerForm, password: event.currentTarget.value })}
+                        maxLength={128}
+                        required
+                      />
+                    </Field>
                     <ul className="input-requirements" aria-live="polite">
                       <Requirement met={passwordLengthValid}>At least 8 characters</Requirement>
                       <Requirement met={passwordLetterValid}>Contains a letter</Requirement>
                       <Requirement met={passwordNumberValid}>Contains a number</Requirement>
                       <Requirement met={passwordSpecialValid}>Contains one of @$!%*#?&</Requirement>
-                      <Requirement met={passwordCharactersValid}>Uses only letters, numbers, and allowed special characters</Requirement>
+                      <Requirement met={passwordCharactersValid}>Uses only allowed characters</Requirement>
                     </ul>
                   </div>
-                  <div>
-                    <strong>Confirmation</strong>
+                  <div className="credential-field">
+                    <Field label="Confirm password">
+                      <PasswordInput
+                        value={registerForm.confirmPassword}
+                        onChange={(event) => setRegisterForm({ ...registerForm, confirmPassword: event.currentTarget.value })}
+                        maxLength={128}
+                        required
+                      />
+                    </Field>
                     <ul className="input-requirements" aria-live="polite">
                       <Requirement met={passwordsMatch}>Passwords match</Requirement>
                     </ul>

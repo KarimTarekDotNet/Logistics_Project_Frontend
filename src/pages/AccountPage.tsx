@@ -1,4 +1,4 @@
-import { AtSign, Building2, CheckCircle2, KeyRound, Mail, Phone, Send, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import { Building2, CheckCircle2, KeyRound, Phone, Send, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { ConfirmDialog, Field, OtpInput, PanelTitle, PasswordInput, SectionHeader, StatusBadge } from "../components/ui";
 import type { Customer, CustomerDraft, PasswordDraft, ProfileDraft, ProfileResponse, VerifyDraft } from "../types";
@@ -56,6 +56,7 @@ export function AccountPage(props: {
   } = props;
   const [confirmCustomerDelete, setConfirmCustomerDelete] = useState(false);
   const [confirmLogoutAll, setConfirmLogoutAll] = useState(false);
+  const [activeSection, setActiveSection] = useState<"profile" | "security" | "customer">("profile");
 
   function normalizePhoneInput(value: string) {
     const hasPlus = value.trimStart().startsWith("+");
@@ -67,8 +68,23 @@ export function AccountPage(props: {
     <div className="view-stack">
       <SectionHeader icon={<UserRound size={22} />} title="Settings Profile" meta={profile?.username || "Profile settings"} />
 
-      <div className="two-column account-layout">
-        <section className="panel">
+      <nav className="settings-tabs" aria-label="Account settings">
+        <button className={activeSection === "profile" ? "active" : ""} type="button" onClick={() => setActiveSection("profile")}>
+          <UserRound size={17} />
+          Profile
+        </button>
+        <button className={activeSection === "security" ? "active" : ""} type="button" onClick={() => setActiveSection("security")}>
+          <KeyRound size={17} />
+          Security
+        </button>
+        <button className={activeSection === "customer" ? "active" : ""} type="button" onClick={() => setActiveSection("customer")}>
+          <Building2 size={17} />
+          Customer
+        </button>
+      </nav>
+
+      {activeSection === "profile" && (
+        <section className="panel settings-section">
           <PanelTitle icon={<UserRound size={18} />} title="Profile" />
           <div className="profile-summary">
             <div>
@@ -88,20 +104,17 @@ export function AccountPage(props: {
 
           <form className="settings-profile-form" onSubmit={onUpdateProfile}>
             <div className="settings-field-grid">
-              <div className="settings-field-card">
-                <span className="settings-field-icon"><UserRound size={18} /></span>
+              <div className="settings-field">
                 <Field label="First name" hint="3 to 50 characters when changed">
                   <input value={profileDraft.firstName} onChange={(event) => setProfileDraft({ ...profileDraft, firstName: event.target.value.slice(0, 50) })} maxLength={50} />
                 </Field>
               </div>
-              <div className="settings-field-card">
-                <span className="settings-field-icon"><UserRound size={18} /></span>
+              <div className="settings-field">
                 <Field label="Last name" hint="3 to 50 characters when changed">
                   <input value={profileDraft.lastName} onChange={(event) => setProfileDraft({ ...profileDraft, lastName: event.target.value.slice(0, 50) })} maxLength={50} />
                 </Field>
               </div>
-              <div className="settings-field-card">
-                <span className="settings-field-icon"><AtSign size={18} /></span>
+              <div className="settings-field">
                 <Field label="Username" hint="3 to 20 letters, numbers, or underscores">
                   <input
                     value={profileDraft.username}
@@ -112,14 +125,12 @@ export function AccountPage(props: {
                   />
                 </Field>
               </div>
-              <div className="settings-field-card">
-                <span className="settings-field-icon"><Mail size={18} /></span>
+              <div className="settings-field">
                 <Field label="Email" hint="Changing it requires email confirmation">
                   <input type="email" value={profileDraft.email} onChange={(event) => setProfileDraft({ ...profileDraft, email: event.target.value.slice(0, 120) })} maxLength={120} spellCheck={false} />
                 </Field>
               </div>
-              <div className="settings-field-card full">
-                <span className="settings-field-icon"><Phone size={18} /></span>
+              <div className="settings-field full">
                 <Field label="Phone number" hint="Use international format, for example +201001234567">
                   <input
                     value={profileDraft.phoneNumber}
@@ -206,8 +217,10 @@ export function AccountPage(props: {
             </div>
           )}
         </section>
+      )}
 
-        <section className="panel">
+      {activeSection === "security" && (
+        <section className="panel settings-section settings-security-section">
           <PanelTitle icon={<KeyRound size={18} />} title="Security" />
           <form className="form-stack" onSubmit={onUpdatePassword}>
             <Field label="Current password">
@@ -232,9 +245,10 @@ export function AccountPage(props: {
             </div>
           </form>
         </section>
-      </div>
+      )}
 
-      <section className="panel">
+      {activeSection === "customer" && (
+      <section className="panel settings-section">
         <div className="panel-title-row">
           <PanelTitle icon={<Building2 size={18} />} title="Customer profile" />
           {currentCustomer && !isPrivileged && (
@@ -312,6 +326,7 @@ export function AccountPage(props: {
           </div>
         )}
       </section>
+      )}
 
       <ConfirmDialog
         open={confirmCustomerDelete}

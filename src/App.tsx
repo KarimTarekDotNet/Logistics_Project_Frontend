@@ -1,5 +1,5 @@
 import { LockKeyhole, Settings } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { AppShell } from "./components/layout/AppShell";
 import { ProfilePreviewModal } from "./components/layout/ProfilePreviewModal";
 import { ConfirmDialog, LoadingSpinner, ToastHost } from "./components/ui";
@@ -13,19 +13,9 @@ import {
 import { getWorkflowCharges } from "./features/shipments/shipmentCharges";
 import { useShipmentWorkspace } from "./hooks/useShipmentWorkspace";
 import { useToasts } from "./hooks/useToasts";
-import { AccountPage } from "./pages/AccountPage";
 import { AuthPage } from "./pages/AuthPage";
-import { ChargeGenerationPage } from "./pages/ChargeGenerationPage";
-import { DocumentsPage } from "./pages/DocumentsPage";
-import { FinancePage } from "./pages/FinancePage";
-import { InvoiceReviewPage } from "./pages/InvoiceReviewPage";
-import { MasterDataPage } from "./pages/MasterDataPage";
-import { OverviewPage } from "./pages/OverviewPage";
-import { PricingPage, type AnalyticsDraft } from "./pages/PricingPage";
+import type { AnalyticsDraft } from "./pages/PricingPage";
 import { PublicLandingPage } from "./pages/PublicLandingPage";
-import { QuoteRequestDetailsPage } from "./pages/QuoteRequestDetailsPage";
-import { QuotesPage } from "./pages/QuotesPage";
-import { ShipmentsPage } from "./pages/ShipmentsPage";
 import { ApiError, api, SESSION_REFRESHED_EVENT } from "./services/api";
 import type {
   AppData,
@@ -86,6 +76,19 @@ import {
   sessionFromAuth
 } from "./utils/session";
 
+const AccountPage = lazy(() => import("./pages/AccountPage").then((module) => ({ default: module.AccountPage })));
+const ChargeGenerationPage = lazy(() => import("./pages/ChargeGenerationPage").then((module) => ({ default: module.ChargeGenerationPage })));
+const DocumentsPage = lazy(() => import("./pages/DocumentsPage").then((module) => ({ default: module.DocumentsPage })));
+const FinancePage = lazy(() => import("./pages/FinancePage").then((module) => ({ default: module.FinancePage })));
+const InvoiceReviewPage = lazy(() => import("./pages/InvoiceReviewPage").then((module) => ({ default: module.InvoiceReviewPage })));
+const MasterDataPage = lazy(() => import("./pages/MasterDataPage").then((module) => ({ default: module.MasterDataPage })));
+const OverviewPage = lazy(() => import("./pages/OverviewPage").then((module) => ({ default: module.OverviewPage })));
+const PricingPage = lazy(() => import("./pages/PricingPage").then((module) => ({ default: module.PricingPage })));
+const QuoteRequestDetailsPage = lazy(() => import("./pages/QuoteRequestDetailsPage").then((module) => ({ default: module.QuoteRequestDetailsPage })));
+const QuotesPage = lazy(() => import("./pages/QuotesPage").then((module) => ({ default: module.QuotesPage })));
+const RateDetailsPage = lazy(() => import("./pages/RateDetailsPage").then((module) => ({ default: module.RateDetailsPage })));
+const ShipmentsPage = lazy(() => import("./pages/ShipmentsPage").then((module) => ({ default: module.ShipmentsPage })));
+
 const initialData: AppData = {
   rates: [],
   quoteRequests: [],
@@ -99,6 +102,7 @@ const initialData: AppData = {
 };
 
 type ShipmentWorkflowStep = "charges" | "invoice";
+const CUSTOMER_LOCKED_VIEWS = new Set<View>(["overview", "quotes", "shipments", "finance", "documents"]);
 
 const initialRegisterForm: RegisterForm = {
   firstName: "",
@@ -411,6 +415,8 @@ export default function App() {
   const [quoteRequestDetailError, setQuoteRequestDetailError] = useState<string | null>(null);
   const [authMetrics, setAuthMetrics] = useState({ publicRateCount: 0, workflowStateCount: 0 });
   const [itemUpdateReturnStep, setItemUpdateReturnStep] = useState<ShipmentWorkflowStep | null>(null);
+  const [pricingMode, setPricingMode] = useState<"ratebook" | "insights">("ratebook");
+  const [selectedPricingRate, setSelectedPricingRate] = useState<Rate | null>(null);
 
   const [loginForm, setLoginForm] = useState({ identity: "", password: "" });
   const [registerForm, setRegisterForm] = useState<RegisterForm>(initialRegisterForm);
@@ -528,6 +534,7 @@ export default function App() {
       setQuoteRequestDetailId(null);
       setQuoteRequestDetail(null);
       setQuoteRequestDetailError(null);
+      setSelectedPricingRate(null);
     },
     [activeView, showPageLoading]
   );
@@ -537,8 +544,7 @@ export default function App() {
   const isUser = Boolean(session?.roles.includes("User"));
   const currentCustomer = data.currentCustomer ?? profile?.customer;
   const hasCustomerProfile = isPrivileged || Boolean(currentCustomer);
-  const customerLockedViews = new Set<View>(["overview", "quotes", "shipments", "finance", "documents"]);
-  const isCustomerLockedView = !isPrivileged && customerLockedViews.has(activeView) && !hasCustomerProfile;
+  const isCustomerLockedView = !isPrivileged && CUSTOMER_LOCKED_VIEWS.has(activeView) && !hasCustomerProfile;
   const selectedShipment =
     workspace.selectedShipmentDetail ?? data.shipments.find((shipment) => shipment.id === workspace.selectedShipmentId);
   const selectedShipmentId = selectedShipment?.id ?? "";
@@ -3100,18 +3106,39 @@ export default function App() {
     }
 
     if (activeView === "pricing") {
+      if (selectedPricingRate) {
+        return (
+          <RateDetailsPage
+            rateId={selectedPricingRate.id}
+            session={session!}
+            isUser={isUser}
+            hasCustomerProfile={Boolean(currentCustomer)}
+            theme={theme}
+            onToggleTheme={handleToggleTheme}
+            initialRate={selectedPricingRate}
+            embedded
+            onBack={() => setSelectedPricingRate(null)}
+            onCreateCustomerProfile={() => selectWorkspaceView("account")}
+            onRequestCreated={(request) => {
+              setData((current) => ({ ...current, quoteRequests: [request, ...current.quoteRequests] }));
+              pushToast("success", "Quote request submitted", "Your request is under review. We will email you as soon as it is approved or rejected.");
+            }}
+          />
+        );
+      }
+
       return (
         <PricingPage
           rates={filteredRates}
           carriers={data.carriers}
           routes={data.routes}
           containerTypes={data.containerTypes}
-          session={session!}
           isPrivileged={isPrivileged}
           isAdmin={isAdmin}
-          isUser={isUser}
           busy={busy}
-          theme={theme}
+          mode={pricingMode}
+          onModeChange={setPricingMode}
+          onOpenRate={setSelectedPricingRate}
           draft={rateDraft}
           setDraft={setRateDraft}
           analyticsDraft={analyticsDraft}
@@ -3129,13 +3156,6 @@ export default function App() {
           onResetRateFilters={handleResetRateFilters}
           onLoadAnalytics={handleLoadAnalytics}
           onLoadRecommendations={handleLoadRecommendations}
-          onToggleTheme={handleToggleTheme}
-          onRateRequestCreated={(request) => {
-            setData((current) => ({ ...current, quoteRequests: [request, ...current.quoteRequests] }));
-            pushToast("success", "Quote request submitted", "Your request is under review. We will email you as soon as it is approved or rejected.");
-          }}
-          hasCustomerProfile={Boolean(currentCustomer)}
-          onCreateCustomerProfile={() => selectWorkspaceView("account")}
         />
       );
     }
@@ -3478,7 +3498,9 @@ export default function App() {
         ) : pageLoading || (loading && data.rates.length === 0 && data.shipments.length === 0 && data.quotes.length === 0) ? (
           <LoadingSpinner label="Opening workspace" size="lg" fullScreen />
         ) : (
-          renderWorkspace()
+          <Suspense fallback={<LoadingSpinner label="Loading workspace module" size="lg" fullScreen />}>
+            {renderWorkspace()}
+          </Suspense>
         )}
       </AppShell>
       <ProfilePreviewModal

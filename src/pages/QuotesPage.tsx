@@ -104,7 +104,6 @@ export function QuotesPage(props: {
 
   function openRateDetails(rateId: string) {
     setSelectedRateId(rateId);
-    window.setTimeout(() => document.getElementById("quote-rate-details-inline")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   }
 
   function submitRejection(event: FormEvent) {
@@ -115,6 +114,24 @@ export function QuotesPage(props: {
 
     setRejectTarget(null);
     setRejectReason("");
+  }
+
+  if (selectedRateId) {
+    return (
+      <RateDetailsPage
+        rateId={selectedRateId}
+        session={session}
+        isUser={isUser}
+        hasCustomerProfile={props.hasCustomerProfile}
+        theme={theme}
+        onToggleTheme={props.onToggleTheme}
+        initialRate={selectedRate ?? undefined}
+        embedded
+        onBack={() => setSelectedRateId(null)}
+        onCreateCustomerProfile={props.onCreateCustomerProfile}
+        onRequestCreated={props.onRateRequestCreated}
+      />
+    );
   }
 
   return (
@@ -227,24 +244,6 @@ export function QuotesPage(props: {
             </div>
           </div>
         </section>
-      )}
-
-      {selectedRateId && (
-        <div id="quote-rate-details-inline" className="inline-rate-details">
-          <RateDetailsPage
-            rateId={selectedRateId}
-            session={session}
-            isUser={isUser}
-            hasCustomerProfile={props.hasCustomerProfile}
-            theme={theme}
-            onToggleTheme={props.onToggleTheme}
-            initialRate={selectedRate ?? undefined}
-            embedded
-            onBack={() => setSelectedRateId(null)}
-            onCreateCustomerProfile={props.onCreateCustomerProfile}
-            onRequestCreated={props.onRateRequestCreated}
-          />
-        </div>
       )}
 
       <section className="panel">

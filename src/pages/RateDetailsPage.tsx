@@ -73,6 +73,13 @@ export function RateDetailsPage(props: {
     let cancelled = false;
 
     async function loadRate() {
+      if (props.initialRate?.id === props.rateId) {
+        setRate(props.initialRate);
+        setLoading(false);
+        setError(null);
+        return;
+      }
+
       setRate(props.initialRate ?? null);
       setLoading(!props.initialRate);
       setError(null);
