@@ -1,5 +1,5 @@
-import { Building2, CheckCircle2, KeyRound, Phone, Send, ShieldCheck, Trash2, UserRound } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { Building2, CheckCircle2, KeyRound, Mail, Phone, Send, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ConfirmDialog, Field, OtpInput, PanelTitle, PasswordInput, SectionHeader, StatusBadge } from "../components/ui";
 import type { Customer, CustomerDraft, PasswordDraft, ProfileDraft, ProfileResponse, VerifyDraft } from "../types";
 import { formatDate } from "../utils/format";
@@ -56,7 +56,11 @@ export function AccountPage(props: {
   } = props;
   const [confirmCustomerDelete, setConfirmCustomerDelete] = useState(false);
   const [confirmLogoutAll, setConfirmLogoutAll] = useState(false);
-  const [activeSection, setActiveSection] = useState<"profile" | "security" | "customer">("profile");
+  const [activeSection, setActiveSection] = useState<"profile" | "email" | "phone" | "security" | "customer">("profile");
+
+  useEffect(() => {
+    if (showProfileVerify) setActiveSection(showProfileVerify);
+  }, [showProfileVerify]);
 
   function normalizePhoneInput(value: string) {
     const hasPlus = value.trimStart().startsWith("+");
@@ -72,6 +76,15 @@ export function AccountPage(props: {
         <button className={activeSection === "profile" ? "active" : ""} type="button" onClick={() => setActiveSection("profile")}>
           <UserRound size={17} />
           Profile
+        </button>
+        <button className={activeSection === "email" ? "active" : ""} type="button" onClick={() => setActiveSection("email")}>
+          <Mail size={17} />
+          Email
+        </button>
+        <button className={activeSection === "phone" ? "active" : ""} type="button" onClick={() => setActiveSection("phone")}>
+          <Phone size={17} />
+          Phone
+          {profile?.phoneNumberConfirmed === false && <span className="tab-alert-dot" aria-label="Verification needed" />}
         </button>
         <button className={activeSection === "security" ? "active" : ""} type="button" onClick={() => setActiveSection("security")}>
           <KeyRound size={17} />
@@ -94,10 +107,14 @@ export function AccountPage(props: {
             <div className="profile-statuses">
               <StatusBadge status={profile?.customer ? "Customer ready" : "Customer missing"} />
               {profile && (
-                <span className={`verification-status ${profile.phoneNumberConfirmed ? "verified" : "pending"}`}>
+                <button
+                  className={`verification-status ${profile.phoneNumberConfirmed ? "verified" : "pending"}`}
+                  type="button"
+                  onClick={() => setActiveSection("phone")}
+                >
                   {profile.phoneNumberConfirmed ? <CheckCircle2 size={14} /> : <Phone size={14} />}
                   {profile.phoneNumberConfirmed ? "Phone verified" : "Phone verification needed"}
-                </span>
+                </button>
               )}
             </div>
           </div>
@@ -125,21 +142,6 @@ export function AccountPage(props: {
                   />
                 </Field>
               </div>
-              <div className="settings-field">
-                <Field label="Email" hint="Changing it requires email confirmation">
-                  <input type="email" value={profileDraft.email} onChange={(event) => setProfileDraft({ ...profileDraft, email: event.target.value.slice(0, 120) })} maxLength={120} spellCheck={false} />
-                </Field>
-              </div>
-              <div className="settings-field full">
-                <Field label="Phone number" hint="Use international format, for example +201001234567">
-                  <input
-                    value={profileDraft.phoneNumber}
-                    onChange={(event) => setProfileDraft({ ...profileDraft, phoneNumber: normalizePhoneInput(event.target.value) })}
-                    inputMode="tel"
-                    maxLength={16}
-                  />
-                </Field>
-              </div>
             </div>
             <div className="settings-form-actions">
               <p>Only changed fields are sent to the server.</p>
@@ -150,7 +152,85 @@ export function AccountPage(props: {
             </div>
           </form>
 
-          {profile?.phoneNumberConfirmed === false && (
+        </section>
+      )}
+
+      {activeSection === "email" && (
+        <section className="panel settings-section contact-settings-page">
+          <div className="settings-page-heading">
+            <span className="settings-page-icon"><Mail size={20} /></span>
+            <div>
+              <h2>Email address</h2>
+              <p>Change the address used for account communication. The new address must be confirmed before it becomes active.</p>
+            </div>
+          </div>
+          <form className="settings-contact-form" onSubmit={onUpdateProfile}>
+            <Field label="New email address" hint={`Current email: ${profile?.email || "Not available"}`}>
+              <input
+                type="email"
+                value={profileDraft.email}
+                onChange={(event) => setProfileDraft({ ...profileDraft, email: event.target.value.slice(0, 120) })}
+                maxLength={120}
+                spellCheck={false}
+              />
+            </Field>
+            <div className="settings-form-actions">
+              <p>Only the changed email value is included by the existing profile update handler.</p>
+              <button className="primary-button compact" type="submit" disabled={busy}>
+                <Mail size={17} />
+                Update email
+              </button>
+            </div>
+          </form>
+
+          {showProfileVerify === "email" && (
+            <div className="verify-inline-card">
+              <div className="verify-inline-header">
+                <div className="verify-inline-title">
+                  <ShieldCheck size={16} />
+                  <strong>Confirm new email</strong>
+                </div>
+                <button type="button" className="mini-button" onClick={() => setShowProfileVerify(null)}>
+                  Dismiss
+                </button>
+              </div>
+              <p className="flow-note">
+                A confirmation link was sent to <b>{profileDraft.email}</b>. Open your inbox to finish the change.
+              </p>
+            </div>
+          )}
+        </section>
+      )}
+
+      {activeSection === "phone" && (
+        <section className="panel settings-section contact-settings-page">
+          <div className="settings-page-heading">
+            <span className="settings-page-icon"><Phone size={20} /></span>
+            <div>
+              <h2>Phone number</h2>
+              <p>Verify the current number or submit a replacement number. Six-digit codes are sent automatically once entered.</p>
+            </div>
+          </div>
+
+          <form className="settings-contact-form" onSubmit={onUpdateProfile}>
+            <Field label="Phone number" hint="Use international format, for example +201001234567">
+              <input
+                value={profileDraft.phoneNumber}
+                onChange={(event) => setProfileDraft({ ...profileDraft, phoneNumber: normalizePhoneInput(event.target.value) })}
+                inputMode="tel"
+                maxLength={16}
+              />
+            </Field>
+            <div className="settings-form-actions">
+              <p>{profile?.phoneNumberConfirmed ? "Changing the number requires a new verification code." : "You can verify the current number below or replace it first."}</p>
+              <button className="primary-button compact" type="submit" disabled={busy}>
+                <Phone size={17} />
+                Update phone
+              </button>
+            </div>
+          </form>
+
+          {profile?.phoneNumberConfirmed === false && showProfileVerify !== "phone" && (
             <div className="verify-inline-card phone-verification-card">
               <div className="verify-inline-header">
                 <div className="verify-inline-title">
@@ -173,23 +253,6 @@ export function AccountPage(props: {
                 ariaLabel="Account phone verification code"
               />
               <p className="otp-auto-submit-note">Verification starts automatically after the sixth digit.</p>
-            </div>
-          )}
-
-          {showProfileVerify === "email" && (
-            <div className="verify-inline-card">
-              <div className="verify-inline-header">
-                <div className="verify-inline-title">
-                  <ShieldCheck size={16} />
-                  <strong>Confirm new email</strong>
-                </div>
-                <button type="button" className="mini-button" onClick={() => setShowProfileVerify(null)}>
-                  Dismiss
-                </button>
-              </div>
-              <p className="flow-note">
-                A confirmation link was sent to <b>{profileDraft.email}</b>. Open your inbox to finish the change.
-              </p>
             </div>
           )}
 

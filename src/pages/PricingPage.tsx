@@ -389,7 +389,7 @@ export function PricingPage(props: {
 
       {mode === "insights" && (
         <div className="pricing-insights-grid">
-        <section className="panel">
+        <section className="panel market-analytics-panel">
           <PanelTitle icon={<BarChart3 size={18} />} title="Market analytics" />
           <form className="form-stack" onSubmit={onLoadAnalytics}>
             <div className="form-grid">

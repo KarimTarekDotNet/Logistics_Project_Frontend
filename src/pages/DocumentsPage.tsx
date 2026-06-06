@@ -21,6 +21,7 @@ export function DocumentsPage(props: {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [openError, setOpenError] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<"library" | "upload">("library");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function assignFile(file?: File | null) {
@@ -53,6 +54,19 @@ export function DocumentsPage(props: {
 
       {selectedShipment ? (
         <>
+          <nav className="workspace-tabs" aria-label="Document workspace">
+            <button className={activeSection === "library" ? "active" : ""} type="button" onClick={() => setActiveSection("library")}>
+              Document library
+              <span>{documents.length}</span>
+            </button>
+            <button className={activeSection === "upload" ? "active" : ""} type="button" onClick={() => setActiveSection("upload")}>
+              Upload document
+            </button>
+          </nav>
+          <div className="workspace-page-intro">
+            <strong>{activeSection === "library" ? "Review and open the files attached to the selected shipment." : "Add one validated shipment file at a time."}</strong>
+            <span>PDF and image files use the existing secure document endpoints.</span>
+          </div>
           <ShipmentContextPanel
             shipment={selectedShipment}
             extra={[
@@ -62,8 +76,7 @@ export function DocumentsPage(props: {
             ]}
           />
 
-          <div className="two-column">
-            <section className="panel">
+          {activeSection === "upload" && <section className="panel module-focus-panel">
               <PanelTitle icon={<Upload size={18} />} title="Upload document" />
               <form className="form-stack" onSubmit={onUpload}>
                 <Field label="Document type">
@@ -101,9 +114,9 @@ export function DocumentsPage(props: {
                   Upload
                 </button>
               </form>
-            </section>
+          </section>}
 
-            <section className="panel">
+          {activeSection === "library" && <section className="panel module-focus-panel">
               <PanelTitle icon={<FileText size={18} />} title="Shipment documents" meta={`${documents.length} files`} />
               {openError && <p className="field-error">{openError}</p>}
               <div className="compact-list">
@@ -136,8 +149,7 @@ export function DocumentsPage(props: {
                 ))}
                 {documents.length === 0 && <EmptyState icon={<FileText size={24} />} title="No documents uploaded" />}
               </div>
-            </section>
-          </div>
+          </section>}
         </>
       ) : (
         <EmptyState icon={<FileText size={28} />} title="No shipment selected" />

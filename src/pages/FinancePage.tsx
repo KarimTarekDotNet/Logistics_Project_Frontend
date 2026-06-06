@@ -45,6 +45,7 @@ export function FinancePage(props: {
   const [deleteInvoiceId, setDeleteInvoiceId] = useState<string | null>(null);
   const [cancelInvoiceId, setCancelInvoiceId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("Cancelled from operations console");
+  const [activeSection, setActiveSection] = useState<"overview" | "invoices">("overview");
 
   const chargeTotal = charges.reduce((total, charge) => total + charge.amount + charge.taxAmount, 0);
 
@@ -110,6 +111,19 @@ export function FinancePage(props: {
 
       {selectedShipment ? (
         <>
+          <nav className="workspace-tabs" aria-label="Finance workspace">
+            <button className={activeSection === "overview" ? "active" : ""} type="button" onClick={() => setActiveSection("overview")}>
+              Finance overview
+            </button>
+            <button className={activeSection === "invoices" ? "active" : ""} type="button" onClick={() => setActiveSection("invoices")}>
+              Invoices
+              <span>{invoices.length}</span>
+            </button>
+          </nav>
+          <div className="workspace-page-intro">
+            <strong>{activeSection === "overview" ? "Review collection health, outstanding value, and billing coverage." : "Manage invoice records and available payment actions."}</strong>
+            <span>Payment and invoice actions keep the current backend flow unchanged.</span>
+          </div>
           <ShipmentContextPanel
             shipment={selectedShipment}
             extra={[
@@ -118,14 +132,15 @@ export function FinancePage(props: {
             ]}
           />
 
-          <section className="panel finance-invoices-panel">
+          <section className="panel finance-invoices-panel module-focus-panel">
             <div className="panel-title-row">
-              <PanelTitle icon={<FileText size={18} />} title="Invoices" />
-              <button className="mini-button" type="button" onClick={onLoadInvoices} disabled={busy}>
+              <PanelTitle icon={activeSection === "overview" ? <WalletCards size={18} /> : <FileText size={18} />} title={activeSection === "overview" ? "Finance overview" : "Invoices"} />
+              {activeSection === "invoices" && <button className="mini-button" type="button" onClick={onLoadInvoices} disabled={busy}>
                 Load
-              </button>
+              </button>}
             </div>
 
+            {activeSection === "overview" && <>
             <div className="payment-overview-grid">
               <div>
                 <span>Total invoices</span>
@@ -173,8 +188,9 @@ export function FinancePage(props: {
                 <small>Cancelled or refunded invoices</small>
               </div>
             </div>
+            </>}
 
-            {isPrivileged && (
+            {activeSection === "invoices" && isPrivileged && (
               <form className="form-stack" onSubmit={onCreateInvoice}>
                 <div className="invoice-draft-summary">
                   <span>{charges.length > 0 ? "Ready to draft" : "No billing lines"}</span>
@@ -187,7 +203,7 @@ export function FinancePage(props: {
               </form>
             )}
 
-            <div className="compact-list invoice-list">
+            {activeSection === "invoices" && <div className="compact-list invoice-list">
               {invoices.map((invoice) => {
                 const balance = resolveInvoiceBalance(invoice);
                 const status = normalizePaymentStatus(invoice.paymentStatus);
@@ -376,7 +392,7 @@ export function FinancePage(props: {
                 );
               })}
               {invoices.length === 0 && <EmptyState icon={<FileText size={24} />} title="No invoices loaded" description="Load shipment invoices or create one when billing lines are ready." />}
-            </div>
+            </div>}
           </section>
         </>
       ) : (

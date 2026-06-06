@@ -60,6 +60,7 @@ export function QuotesPage(props: {
   const [rejectTarget, setRejectTarget] = useState<{ kind: "quote"; id: string } | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [selectedRateId, setSelectedRateId] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<"requests" | "quotes" | "create" | "lookups">(isPrivileged ? "quotes" : "requests");
 
   const filteredQuotes = useMemo(
     () =>
@@ -138,7 +139,38 @@ export function QuotesPage(props: {
     <div className="view-stack">
       <SectionHeader icon={<ClipboardList size={22} />} title="Quotes" meta={`${quotes.length} quotes / ${quoteRequests.length} requests`} />
 
-      {isPrivileged && (
+      <nav className="workspace-tabs" aria-label="Quote workspace">
+        <button className={activeSection === "requests" ? "active" : ""} type="button" onClick={() => setActiveSection("requests")}>
+          Quote requests
+          <span>{quoteRequests.length}</span>
+        </button>
+        <button className={activeSection === "quotes" ? "active" : ""} type="button" onClick={() => setActiveSection("quotes")}>
+          Quote list
+          <span>{quotes.length}</span>
+        </button>
+        {isPrivileged && (
+          <button className={activeSection === "create" ? "active" : ""} type="button" onClick={() => setActiveSection("create")}>
+            Create quote
+          </button>
+        )}
+        {isPrivileged && (
+          <button className={activeSection === "lookups" ? "active" : ""} type="button" onClick={() => setActiveSection("lookups")}>
+            Quote lookups
+          </button>
+        )}
+      </nav>
+
+      <div className="workspace-page-intro">
+        <strong>
+          {activeSection === "requests" && "Quote requests are customer requests raised from a published rate."}
+          {activeSection === "quotes" && "Quote list contains priced commercial offers that can move forward into shipment creation."}
+          {activeSection === "create" && "Create quote converts an eligible rate and customer request into a formal offer."}
+          {activeSection === "lookups" && "Quote lookups narrows operational quote data by customer or route."}
+        </strong>
+        <span>Each area keeps its existing server actions and data source.</span>
+      </div>
+
+      {isPrivileged && activeSection === "create" && (
         <section className="panel">
           <PanelTitle icon={<Plus size={18} />} title="Create quote" />
           <form className="dense-form quote-create-form" onSubmit={onCreateQuote}>
@@ -215,7 +247,7 @@ export function QuotesPage(props: {
         </section>
       )}
 
-      {isPrivileged && (
+      {isPrivileged && activeSection === "lookups" && (
         <section className="panel endpoint-panel">
           <PanelTitle icon={<Search size={18} />} title="Quote lookups" />
           <div className="endpoint-grid">
@@ -246,7 +278,7 @@ export function QuotesPage(props: {
         </section>
       )}
 
-      <section className="panel">
+      {activeSection === "requests" && <section className="panel">
         <PanelTitle icon={<ClipboardList size={18} />} title="Quote requests" meta={`${filteredRequests.length} shown`} />
         <div className="toolbar">
           <label className="toolbar-search">
@@ -298,9 +330,9 @@ export function QuotesPage(props: {
         ) : (
           <EmptyState icon={<ClipboardList size={28} />} title="No quote requests found" description="Requests created from rate details appear here." />
         )}
-      </section>
+      </section>}
 
-      <section className="panel">
+      {activeSection === "quotes" && <section className="panel">
         <PanelTitle icon={<ClipboardList size={18} />} title="Quote list" meta={`${filteredQuotes.length} shown`} />
         <div className="toolbar">
           <label className="toolbar-search">
@@ -373,7 +405,7 @@ export function QuotesPage(props: {
         ) : (
           <EmptyState icon={<ClipboardList size={28} />} title="No quotes found" description="Quotes created by staff appear here for shipment conversion." />
         )}
-      </section>
+      </section>}
 
       {rejectTarget && (
         <div className="modal-backdrop" role="presentation" onMouseDown={() => setRejectTarget(null)}>

@@ -6814,3 +6814,345 @@ html {
     flex: 1;
   }
 }
+
+/* Focused workspace navigation and contrast refinements */
+.landing-nav,
+.topbar {
+  background: rgba(3, 3, 3, 0.96) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.11) !important;
+}
+
+.landing-page {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.landing-hero {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+}
+
+.landing-hero > *,
+.landing-visual,
+.visual-grid,
+.visual-card,
+.pipeline-line {
+  min-width: 0;
+}
+
+.landing-nav .landing-brand strong,
+.landing-nav .ghost-button,
+.topbar .topbar-context strong {
+  color: #f7f7f7 !important;
+}
+
+.landing-nav .landing-brand span,
+.landing-nav-links button,
+.topbar .topbar-context span {
+  color: #a8adb7 !important;
+}
+
+.landing-nav-links button:hover,
+.landing-nav-links button.active {
+  color: #ffffff !important;
+  background: #151515 !important;
+}
+
+.landing-nav-theme,
+.topbar-theme-btn,
+.topbar .search-box {
+  background: #111111 !important;
+  border-color: #303030 !important;
+  color: #e9e9e9 !important;
+}
+
+.topbar .search-box input {
+  color: #ffffff !important;
+}
+
+.topbar .search-box input::placeholder {
+  color: #8e949f !important;
+}
+
+:root.light .auth-visual .stat-card {
+  background: #ffffff !important;
+  border-color: #d9dbe1 !important;
+}
+
+:root.light .auth-visual .stat-card strong {
+  color: #08090b !important;
+}
+
+:root.light .auth-visual .stat-card small,
+:root.light .auth-visual .stat-card > span {
+  color: #4f5663 !important;
+}
+
+.workspace-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding-bottom: 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border-subtle);
+  scrollbar-width: thin;
+}
+
+.workspace-tabs button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  flex: 0 0 auto;
+  padding: 0 17px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.workspace-tabs button:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.workspace-tabs button.active {
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border-color: var(--border-strong);
+}
+
+.workspace-tabs button span {
+  min-width: 22px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.7rem;
+}
+
+.workspace-page-intro {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0 2px;
+}
+
+.workspace-page-intro strong {
+  color: var(--text-primary);
+  font-size: 0.94rem;
+}
+
+.workspace-page-intro span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+.module-focus-panel {
+  width: 100%;
+}
+
+.settings-tabs {
+  overflow-x: auto;
+}
+
+.settings-tabs button {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.tab-alert-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warning);
+  box-shadow: 0 0 0 4px var(--warning-bg);
+}
+
+button.verification-status {
+  font: inherit;
+  cursor: pointer;
+}
+
+.contact-settings-page {
+  display: grid;
+  gap: 28px;
+}
+
+.settings-page-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-page-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.settings-page-heading h2 {
+  color: var(--text-primary);
+  font-size: 1.12rem;
+}
+
+.settings-page-heading p {
+  max-width: 720px;
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+
+.settings-contact-form {
+  display: grid;
+  gap: 22px;
+  max-width: 860px;
+}
+
+.pricing-insights-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.market-analytics-panel .form-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(180px, 0.65fr) auto;
+  align-items: end;
+  gap: 18px;
+}
+
+.market-analytics-panel .form-stack > .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.market-analytics-panel .form-stack > button {
+  min-height: 46px;
+  white-space: nowrap;
+}
+
+.market-analytics-panel .analytics-dashboard {
+  grid-template-columns: minmax(300px, 0.72fr) minmax(0, 1.28fr);
+  align-items: center;
+  margin-top: 32px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.market-analytics-panel .analytics-visuals {
+  padding: 0 0 0 30px;
+  border-top: 0;
+  border-left: 1px solid var(--border-subtle);
+}
+
+:root.light .workspace-tabs button.active {
+  background: #17233f;
+  border-color: #17233f;
+  color: #ffffff;
+}
+
+:root.light .workspace-tabs button.active span {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+:root.light .workspace-page-intro strong,
+:root.light .settings-page-heading h2 {
+  color: #08090b;
+}
+
+@media (max-width: 960px) {
+  .landing-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .market-analytics-panel .form-stack,
+  .market-analytics-panel .analytics-dashboard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .market-analytics-panel .analytics-visuals {
+    padding: 24px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--border-subtle);
+  }
+}
+
+@media (max-width: 720px) {
+  .server-status-banner {
+    margin-inline: 16px;
+  }
+
+  .landing-hero-copy h1,
+  .landing-hero-copy p,
+  .landing-kicker {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .landing-visual {
+    padding: 12px;
+  }
+
+  .visual-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pipeline-card {
+    grid-column: auto;
+  }
+
+  .visual-card-head {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .visual-card-head b {
+    max-width: 48%;
+    text-align: right;
+  }
+
+  .pipeline-line span {
+    padding-inline: 2px;
+    font-size: 0.58rem;
+    letter-spacing: 0;
+  }
+
+  .workspace-page-intro {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .workspace-page-intro span {
+    text-align: left;
+  }
+
+  .market-analytics-panel .form-stack > .form-grid,
+  .market-analytics-panel .analytics-visuals {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .market-analytics-panel .analytics-ring {
+    width: 132px;
+  }
+
+  .market-analytics-panel .analytics-ring::before {
+    width: 98px;
+  }
+}

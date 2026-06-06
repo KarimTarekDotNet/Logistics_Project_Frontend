@@ -159,6 +159,7 @@ export function ShipmentsPage(props: {
   const [statusFilter, setStatusFilter] = useState("all");
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [deleteShipmentId, setDeleteShipmentId] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<"directory" | "create" | "workspace">("directory");
   const actions = selectedShipment ? lifecycleByStatus[selectedShipment.status] ?? [] : [];
   const visibleQuotes = quoteOptions
     .filter((quote) => includesSearch([quote.customerName, quote.fromPortCode, quote.toPortCode, quote.containerTypeName, quote.finalPrice, quote.currency], quoteSearch))
@@ -198,7 +199,31 @@ export function ShipmentsPage(props: {
     <div className="view-stack">
       <SectionHeader icon={<Ship size={22} />} title="Shipments" meta={`${shipments.length} records`} />
 
-      {isUser && (
+      <nav className="workspace-tabs" aria-label="Shipment workspace">
+        <button className={activeSection === "directory" ? "active" : ""} type="button" onClick={() => setActiveSection("directory")}>
+          Shipment list
+          <span>{shipments.length}</span>
+        </button>
+        <button className={activeSection === "workspace" ? "active" : ""} type="button" onClick={() => setActiveSection("workspace")}>
+          Shipment workspace
+        </button>
+        {isUser && (
+          <button className={activeSection === "create" ? "active" : ""} type="button" onClick={() => setActiveSection("create")}>
+            Create shipment
+          </button>
+        )}
+      </nav>
+
+      <div className="workspace-page-intro">
+        <strong>
+          {activeSection === "directory" && "Browse shipments and choose the record you want to operate on."}
+          {activeSection === "workspace" && "Tracking, lifecycle, history, and cargo items for the selected shipment."}
+          {activeSection === "create" && "Create a shipment from an accepted quote."}
+        </strong>
+        <span>Selection and operations continue to use the current shipment state and handlers.</span>
+      </div>
+
+      {isUser && activeSection === "create" && (
         <section className="panel">
           <PanelTitle icon={<Plus size={18} />} title="Create shipment" />
           <form className="shipment-create-form" onSubmit={onCreateShipment}>
@@ -263,8 +288,8 @@ export function ShipmentsPage(props: {
         </section>
       )}
 
-      <div className="split-layout">
-        <section className="panel">
+      <>
+        {activeSection === "directory" && <section className="panel module-focus-panel">
           <PanelTitle icon={<Ship size={18} />} title="Shipment list" meta={`${filteredShipments.length} shown`} />
           <div className="toolbar">
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
@@ -292,7 +317,15 @@ export function ShipmentsPage(props: {
                 {filteredShipments.map((shipment) => {
                   const isSelected = shipment.id === selectedShipment?.id;
                   return (
-                    <tr key={shipment.id} className={`clickable-row ${isSelected ? "selected-row" : ""}`} aria-current={isSelected ? "true" : undefined} onClick={() => onSelectShipment(shipment.id)}>
+                    <tr
+                      key={shipment.id}
+                      className={`clickable-row ${isSelected ? "selected-row" : ""}`}
+                      aria-current={isSelected ? "true" : undefined}
+                      onClick={() => {
+                        onSelectShipment(shipment.id);
+                        setActiveSection("workspace");
+                      }}
+                    >
                       <td>{shipment.customerName}</td>
                       <td>{shipment.carrierName}</td>
                       <td>
@@ -321,9 +354,9 @@ export function ShipmentsPage(props: {
               </tbody>
             </table>
           </div>
-        </section>
+        </section>}
 
-        <section className="panel detail-panel">
+        {activeSection === "workspace" && <section className="panel detail-panel module-focus-panel">
           <PanelTitle icon={<Activity size={18} />} title="Shipment detail" />
           {selectedShipment ? (
             <>
@@ -452,8 +485,8 @@ export function ShipmentsPage(props: {
           ) : (
             <EmptyState icon={<Ship size={28} />} title="No shipment selected" />
           )}
-        </section>
-      </div>
+        </section>}
+      </>
 
       <ConfirmDialog
         open={Boolean(pendingAction)}
