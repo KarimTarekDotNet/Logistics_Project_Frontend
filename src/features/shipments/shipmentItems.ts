@@ -11,7 +11,7 @@ const itemLockedStatuses = new Set([
   "Cancelled"
 ]);
 
-const invoicedPaymentStatuses = new Set(["pending", "partiallypaid", "paid"]);
+const invoicedPaymentStatuses = new Set(["partiallypaid", "paid"]);
 
 function normalizeStatus(value?: string | null) {
   return String(value ?? "").replace(/[\s_-]+/g, "").toLowerCase();

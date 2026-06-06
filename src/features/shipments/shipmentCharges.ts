@@ -9,11 +9,7 @@ export function isBaseFreightCharge(charge: ShipmentCharge, shipment?: Shipment)
   if (chargeType !== "oceanfreight") return false;
 
   const description = String(charge.description ?? "").toLowerCase();
-  const looksLikeQuoteCharge = description.includes("quote");
-  const matchesAgreedPrice =
-    typeof shipment?.agreedPrice === "number" && Math.abs(Number(charge.amount) - shipment.agreedPrice) < 0.01;
-
-  return looksLikeQuoteCharge || matchesAgreedPrice;
+  return description.includes("quote");
 }
 
 export function getWorkflowCharges(charges: ShipmentCharge[], shipment?: Shipment) {

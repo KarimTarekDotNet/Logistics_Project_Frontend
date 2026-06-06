@@ -703,7 +703,7 @@ function CargoItems(props: {
               ) : isInvoicedItem ? (
                 <div className="cargo-locked-note">
                   <ReceiptText size={14} />
-                  Invoiced item
+                  Paid invoice item
                 </div>
               ) : null}
             </div>

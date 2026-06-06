@@ -6,6 +6,7 @@ import { ConfirmDialog, LoadingSpinner, ToastHost } from "./components/ui";
 import { DEFAULT_CURRENCY, THEME_KEY } from "./constants/logistics";
 import {
   buildShipmentItemPayload,
+  canModifyShipmentItems,
   emptyShipmentItemDraft,
   getUnbilledShipmentItems,
   shipmentItemToDraft
@@ -563,6 +564,8 @@ export default function App() {
       ? getUnbilledShipmentItems(selectedShipmentItems, invoices)
       : [];
   const editableShipmentItemIds = new Set(unbilledShipmentItems.map((item) => item.id));
+  const canOpenItemUpdate =
+    Boolean(isUser && selectedShipment && canModifyShipmentItems(selectedShipment.status));
   const shipmentQuoteOptions = isPrivileged
     ? data.quotes
     : data.quotes.length > 0
@@ -2396,6 +2399,16 @@ export default function App() {
 
     if (!generatedCharges) return;
 
+    if (generatedCharges.length === 0) {
+      await workspace.loadShipmentRelated(selectedShipment.id);
+      pushToast(
+        "info",
+        "No new charges generated",
+        "No eligible charge rules produced a new charge for the current cargo items."
+      );
+      return;
+    }
+
     workspace.setCharges((current) => [
       ...generatedCharges,
       ...current.filter((charge) => generatedCharges.every((generated) => generated.id !== charge.id))
@@ -3269,7 +3282,7 @@ export default function App() {
             selectedShipment={selectedShipment}
             charges={workspace.charges}
             busy={busy}
-            canUpdateItems={editableShipmentItemIds.size > 0}
+            canUpdateItems={canOpenItemUpdate}
             onGenerate={handleGenerateCharges}
             onCreateInvoice={handleCreateWorkflowInvoice}
             onUpdateItems={handleUpdateItemsFromInvoice}
@@ -3284,7 +3297,7 @@ export default function App() {
             invoice={workflowInvoice}
             charges={workspace.charges}
             busy={busy}
-            canUpdateItems={editableShipmentItemIds.size > 0}
+            canUpdateItems={canOpenItemUpdate}
             onConfirm={handleConfirmInvoice}
             onCancel={handleCancelWorkflowInvoice}
             onUpdateItems={handleUpdateItemsFromInvoice}
