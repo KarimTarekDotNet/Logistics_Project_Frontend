@@ -1,4 +1,5 @@
 import { ArrowLeft, Check, CheckCircle2, CircleDollarSign, KeyRound, LogIn, Moon, Plus, Send, ShieldCheck, Ship, Sun, X } from "lucide-react";
+import { AuthOperationsMap } from "../components/auth/AuthOperationsMap";
 import { BrandLogo } from "../components/brand/BrandLogo";
 import { BRAND_NAME, BRAND_TAGLINE } from "../constants/brand";
 import { useEffect, useState, type FormEvent } from "react";
@@ -133,21 +134,13 @@ export function AuthPage(props: {
           </div>
         </div>
 
-        <div className="auth-map">
-          <div className="map-node primary origin">CAI</div>
-          <div className="map-node hub">JED</div>
-          <div className="map-node destination">RTM</div>
-          <div className="operation-card">
-            <span>Shipment pipeline</span>
-            <strong>Booking confirmed</strong>
-            <small>ETA updated 12 min ago</small>
-          </div>
+        <div className="auth-tagline">
+          <span className="auth-eyebrow">Connected logistics command</span>
+          <h1>Operate across every corridor from one workspace</h1>
+          <p>Manage rates, quotes, shipments, and documents through one live operational network.</p>
         </div>
 
-        <div className="auth-tagline">
-          <h1>Centralize global logistics operations</h1>
-          <p>Manage rates, quotes, shipments, and documents from one unified console.</p>
-        </div>
+        <AuthOperationsMap />
 
         <div className="auth-metrics">
           <StatCard icon={<CircleDollarSign size={20} />} label="Public rates" value={publicRateValue} tone="green" />

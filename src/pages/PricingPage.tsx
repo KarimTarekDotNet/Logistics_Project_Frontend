@@ -437,12 +437,7 @@ export function PricingPage(props: {
                 <MetricLine label="Active count" value={analytics.activeCount} />
               </div>
               <div className="analytics-visuals">
-                <div className="analytics-ring" aria-label={`${analytics.activeCount} active rates`}>
-                  <div>
-                    <strong>{analytics.activeCount}</strong>
-                    <span>active rates</span>
-                  </div>
-                </div>
+                <div className="analytics-ring" role="img" aria-label={`${analytics.activeCount} active rates`} />
                 <div className="price-comparison-chart" aria-label="Market price comparison">
                   {[
                     { label: "Cheapest", value: analytics.cheapestPrice },

@@ -18,7 +18,7 @@ import {
   WalletCards,
   XCircle
 } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ConfirmDialog, EmptyState, Field, PanelTitle, SectionHeader, StatusBadge } from "../components/ui";
 import type { Quote, Shipment, ShipmentHistory, ShipmentItem, ShipmentItemDraft, TimelineItem, TrackingDraft } from "../types";
 import { ShipmentContextPanel } from "../features/shipments/ShipmentContextPanel";
@@ -159,9 +159,11 @@ export function ShipmentsPage(props: {
   } = props;
   const [quotePickerOpen, setQuotePickerOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilterOpen, setStatusFilterOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [deleteShipmentId, setDeleteShipmentId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<"directory" | "create" | "workspace">("directory");
+  const statusFilterRef = useRef<HTMLDivElement>(null);
   const actions = selectedShipment ? lifecycleByStatus[selectedShipment.status] ?? [] : [];
   const visibleQuotes = quoteOptions
     .filter((quote) => includesSearch([quote.customerName, quote.fromPortCode, quote.toPortCode, quote.containerTypeName, quote.finalPrice, quote.currency], quoteSearch))
@@ -188,6 +190,28 @@ export function ShipmentsPage(props: {
   );
   const canEditItems = Boolean(isUser && selectedShipment && canModifyShipmentItems(selectedShipment.status));
   const isEditingItem = Boolean(editingItemId);
+
+  useEffect(() => {
+    function closeStatusFilter(event: MouseEvent) {
+      if (!statusFilterRef.current?.contains(event.target as Node)) {
+        setStatusFilterOpen(false);
+      }
+    }
+
+    function closeStatusFilterOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setStatusFilterOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", closeStatusFilter);
+    document.addEventListener("keydown", closeStatusFilterOnEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", closeStatusFilter);
+      document.removeEventListener("keydown", closeStatusFilterOnEscape);
+    };
+  }, []);
 
   function runAction(action: string, dangerous?: boolean) {
     if (dangerous) {
@@ -294,14 +318,49 @@ export function ShipmentsPage(props: {
         {activeSection === "directory" && <section className="panel module-focus-panel">
           <PanelTitle icon={<Ship size={18} />} title="Shipment list" meta={`${filteredShipments.length} shown`} />
           <div className="toolbar">
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-              <option value="all">All statuses</option>
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
+            <div className={`status-filter ${statusFilterOpen ? "open" : ""}`} ref={statusFilterRef}>
+              <button
+                className="status-filter-trigger"
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded={statusFilterOpen}
+                onClick={() => setStatusFilterOpen((open) => !open)}
+              >
+                <span>
+                  <small>Filter by status</small>
+                  <strong>{statusFilter === "all" ? "All statuses" : statusFilter}</strong>
+                </span>
+                <ChevronDown size={17} />
+              </button>
+              <div
+                className="status-filter-menu"
+                role="listbox"
+                aria-label="Filter shipments by status"
+                aria-hidden={!statusFilterOpen}
+              >
+                {["all", ...statusOptions].map((status) => {
+                  const label = status === "all" ? "All statuses" : status;
+                  const isActive = statusFilter === status;
+
+                  return (
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={isActive}
+                      className={isActive ? "active" : ""}
+                      key={status}
+                      onClick={() => {
+                        setStatusFilter(status);
+                        setStatusFilterOpen(false);
+                      }}
+                    >
+                      <span>{label}</span>
+                      {isActive && <CheckCircle2 size={15} />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
           <div className="table-wrap">
             <table>
