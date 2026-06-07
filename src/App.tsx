@@ -1610,6 +1610,7 @@ export default function App() {
     try {
       const response = await api.register({
         ...normalizedForm,
+        countryCode: normalizedForm.phoneNumber ? normalizedForm.countryCode : null,
         phoneNumber: normalizedForm.phoneNumber || null
       });
       const registeredPhone = response.phoneNumber || getRegisteredPhone(normalizedForm);

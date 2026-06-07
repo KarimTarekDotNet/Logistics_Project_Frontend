@@ -465,7 +465,7 @@ export const api = {
     lastName: string;
     userName: string;
     email: string;
-    countryCode: string;
+    countryCode: string | null;
     phoneNumber: string | null;
     password: string;
     confirmPassword: string;
