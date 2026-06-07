@@ -870,3 +870,222 @@
     gap: 22px;
   }
 }
+
+.app-error-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  text-align: center;
+}
+
+.app-error-screen > div {
+  display: grid;
+  gap: 14px;
+  width: min(100%, 440px);
+  padding: 28px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.app-error-screen p {
+  color: var(--text-muted);
+}
+
+.app-error-screen button {
+  justify-self: center;
+}
+
+/* Stable mobile form rendering, date parts, language selection, and RTL shell. */
+html,
+body,
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.field input,
+.field select,
+.field textarea,
+.form-stack input,
+.form-stack select,
+.form-stack textarea,
+.customer-form input,
+.customer-form select {
+  font-family: var(--font-sans) !important;
+  letter-spacing: normal;
+}
+
+.numeric-input,
+.latin-input,
+input[type="email"],
+input[type="tel"],
+input[type="number"],
+.date-parts {
+  direction: ltr;
+  unicode-bidi: plaintext;
+  font-variant-numeric: tabular-nums;
+}
+
+.date-parts {
+  display: grid;
+  grid-template-columns: minmax(76px, 0.8fr) minmax(88px, 1fr) minmax(96px, 1.1fr);
+  gap: 8px;
+  width: 100%;
+}
+
+.date-parts select {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding-inline: 12px 30px;
+  font-variant-numeric: tabular-nums;
+}
+
+.language-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.language-options button {
+  display: grid;
+  gap: 4px;
+  min-height: 84px;
+  padding: 16px;
+  text-align: start;
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.language-options button span {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.language-options button.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+html[dir="rtl"] .sidebar {
+  right: 0;
+  left: auto;
+  border-right: 0;
+  border-left: 1px solid var(--border-subtle);
+}
+
+html[dir="rtl"] .workspace {
+  margin-right: var(--sidebar-w);
+  margin-left: 0;
+}
+
+html[dir="rtl"] .sidebar-collapsed .workspace {
+  margin-right: 72px;
+  margin-left: 0;
+}
+
+html[dir="rtl"] .nav-button,
+html[dir="rtl"] .landing-brand.brand-button {
+  text-align: right;
+}
+
+html[dir="rtl"] .nav-button:hover {
+  transform: translateX(-2px);
+}
+
+html[dir="rtl"] .nav-button.active {
+  box-shadow: inset -3px 0 0 var(--accent), 0 10px 24px rgba(0, 0, 0, 0.12);
+}
+
+html[dir="rtl"] select {
+  background-position: left 12px center;
+  padding-right: 13px;
+  padding-left: 32px;
+}
+
+html[dir="rtl"] .date-parts select {
+  background-position: right 12px center;
+  padding-right: 12px;
+  padding-left: 30px;
+}
+
+@media (max-width: 900px) {
+  .landing-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing-hero,
+  .landing-hero > *,
+  .landing-visual,
+  .server-status-banner,
+  .server-status-banner > div {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .server-status-banner span {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  html[dir="rtl"] .workspace,
+  html[dir="rtl"] .sidebar-collapsed .workspace {
+    margin-right: 0;
+  }
+
+  html[dir="rtl"] .sidebar {
+    right: -100%;
+    left: auto;
+  }
+
+  html[dir="rtl"] .sidebar.open {
+    right: 0;
+    left: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .field input,
+  .field select,
+  .field textarea,
+  .form-stack input:not([type="checkbox"]),
+  .form-stack select,
+  .form-stack textarea,
+  .customer-form input,
+  .customer-form select {
+    min-height: 50px;
+    font-size: 16px !important;
+    line-height: 1.35;
+  }
+
+  .date-parts {
+    grid-template-columns: minmax(68px, 0.8fr) minmax(76px, 0.9fr) minmax(92px, 1.1fr);
+    gap: 6px;
+  }
+
+  .date-parts select {
+    padding-inline: 9px 25px;
+    font-size: 15px !important;
+  }
+
+  .language-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-tabs {
+    scroll-snap-type: x proximity;
+  }
+
+  .settings-tabs button {
+    min-height: 52px;
+    scroll-snap-align: start;
+  }
+}

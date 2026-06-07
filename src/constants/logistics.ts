@@ -5,6 +5,7 @@ export const ALLOWED_CURRENCIES = [DEFAULT_CURRENCY] as const;
 export const SESSION_KEY = "logistic-project-session";
 export const PENDING_VERIFICATION_KEY = "logistic-project-pending-verification";
 export const THEME_KEY = "logistic-project-theme";
+export const LANGUAGE_KEY = "logistic-project-language";
 
 export const payerTypes = [
   { label: "Shipper", value: 0 },

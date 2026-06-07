@@ -37,7 +37,7 @@
   --sidebar-w: 272px;
   --topbar-h: 60px;
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  --font-sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: Inter, Roboto, "Noto Sans Arabic", "Segoe UI", Arial, ui-sans-serif, sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
@@ -61,6 +61,7 @@ body {
   color: var(--text-primary) !important;
   line-height: 1.6;
   min-height: 100vh;
+  text-rendering: optimizeLegibility;
 }
 
 h1,
@@ -897,4 +898,3 @@ input[type="checkbox"] {
   /* minmax(0) prevents overflow */
   gap: 14px;
 }
-

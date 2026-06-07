@@ -10,6 +10,9 @@ export type View =
   | "documents"
   | "account";
 
+export type AccountSection = "profile" | "email" | "phone" | "security" | "customer" | "language";
+export type AppLanguage = "en" | "ar";
+
 export type RegisterForm = {
   firstName: string;
   lastName: string;

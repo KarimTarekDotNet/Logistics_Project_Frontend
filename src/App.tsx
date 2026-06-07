@@ -3,7 +3,7 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { AppShell } from "./components/layout/AppShell";
 import { ProfilePreviewModal } from "./components/layout/ProfilePreviewModal";
 import { ConfirmDialog, LoadingSpinner, ToastHost } from "./components/ui";
-import { DEFAULT_CURRENCY, THEME_KEY } from "./constants/logistics";
+import { DEFAULT_CURRENCY, LANGUAGE_KEY, THEME_KEY } from "./constants/logistics";
 import {
   buildShipmentItemPayload,
   canModifyShipmentItems,
@@ -23,6 +23,8 @@ import { PublicLandingPage } from "./pages/PublicLandingPage";
 import { ApiError, api, SESSION_REFRESHED_EVENT } from "./services/api";
 import type {
   AppData,
+  AccountSection,
+  AppLanguage,
   AuthResponse,
   AuthSession,
   Carrier,
@@ -58,9 +60,9 @@ import type {
   View
 } from "./types";
 import { getErrorMessage, getFriendlyErrorMessage, isBackendUnavailableError, isNotFoundError, safe } from "./utils/errors";
-import { getLocalDateTime, isoToLocalDateTime, toIso } from "./utils/format";
+import { getLocalDateTime, isoToLocalDateTime, normalizeDateOnly, toIso } from "./utils/format";
 import { isValidId } from "./utils/ids";
-import { getAppPath, getAppPathname, toBrowserPath } from "./utils/navigation";
+import { getAppPath, getAppPathname, getWorkspacePath, readWorkspaceRoute, toBrowserPath } from "./utils/navigation";
 import {
   clearPendingCardPayment,
   isPaymentReturnPath,
@@ -391,6 +393,7 @@ function buildRateQuery(filters: RateBookFilterDraft): QueryParams {
 export default function App() {
   const [path, setPath] = useState(() => getAppPath());
   const pathname = getAppPathname(path);
+  const workspaceRoute = readWorkspaceRoute(path);
   const hasSensitiveDetailsInPath = hasSensitiveUrlDetails(path);
   const [session, setSession] = useState<AuthSession | null>(() => loadStoredSession());
   const [restoringSession, setRestoringSession] = useState(true);
@@ -398,7 +401,10 @@ export default function App() {
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     return (localStorage.getItem(THEME_KEY) as "dark" | "light" | null) ?? "dark";
   });
-  const [activeView, setActiveView] = useState<View>("overview");
+  const [language, setLanguage] = useState<AppLanguage>(() => {
+    return (localStorage.getItem(LANGUAGE_KEY) as AppLanguage | null) ?? "en";
+  });
+  const [activeView, setActiveView] = useState<View>(() => workspaceRoute?.view ?? "overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [data, setData] = useState<AppData>(initialData);
@@ -529,7 +535,7 @@ export default function App() {
   }, []);
 
   const selectWorkspaceView = useCallback(
-    (view: View) => {
+    (view: View, accountSection: AccountSection = "profile") => {
       if (view !== activeView) showPageLoading();
       setActiveView(view);
       setWorkflowInvoice(null);
@@ -539,8 +545,9 @@ export default function App() {
       setQuoteRequestDetail(null);
       setQuoteRequestDetailError(null);
       setSelectedPricingRate(null);
+      navigate(getWorkspacePath(view, accountSection), { scroll: false });
     },
-    [activeView, showPageLoading]
+    [activeView, navigate, showPageLoading]
   );
 
   const isPrivileged = Boolean(session?.roles.some((role) => role === "Admin" || role === "Staff"));
@@ -745,6 +752,23 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!session) return;
+
+    const route = readWorkspaceRoute(path);
+    if (route) {
+      setActiveView(route.view);
+      return;
+    }
+
+    const currentPathname = getAppPathname(path).toLowerCase();
+    if (currentPathname === "/") {
+      setActiveView("overview");
+    } else if (currentPathname.startsWith("/auth/")) {
+      navigate(getWorkspacePath("overview"), { replace: true, scroll: false });
+    }
+  }, [navigate, path, session]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function restoreCookieSession() {
@@ -767,7 +791,7 @@ export default function App() {
 
         const currentPathname = getAppPathname(path).toLowerCase();
         if (currentPathname.startsWith("/auth/")) {
-          navigate("/", { replace: true, scroll: false });
+          navigate(getWorkspacePath("overview"), { replace: true, scroll: false });
         }
       } catch (error) {
         persistSession(null);
@@ -880,6 +904,12 @@ export default function App() {
     document.documentElement.classList.toggle("light", theme === "light");
     localStorage.setItem(THEME_KEY, theme);
   }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
+    localStorage.setItem(LANGUAGE_KEY, language);
+  }, [language]);
 
   useEffect(() => {
     if (!session?.accessToken) return;
@@ -1020,7 +1050,7 @@ export default function App() {
     setCustomerDraft({
       mode: isCompany ? "company" : "individual",
       nationalId: customer.nationalId ?? "",
-      dateOfBirth: customer.dateOfBirth ?? "",
+      dateOfBirth: normalizeDateOnly(customer.dateOfBirth),
       companyName: customer.companyName ?? "",
       taxNumber: customer.taxNumber ?? "",
       countryCode: "EG"
@@ -1172,7 +1202,7 @@ export default function App() {
           clearPendingCardPayment();
           setOnlinePaymentInvoiceId(null);
           setBusy(false);
-          if (!shouldKeepCurrentPath) navigate("/", { replace: true, scroll: false });
+          if (!shouldKeepCurrentPath) navigate(getWorkspacePath("finance"), { replace: true, scroll: false });
         }
       }
     })();
@@ -1583,7 +1613,7 @@ export default function App() {
       persistSession(nextSession);
       clearRegistrationVerification();
       void api.prepareCsrfToken(true);
-      navigate("/", { replace: true });
+      navigate(getWorkspacePath("overview"), { replace: true });
       pushToast("success", "Signed in", `Welcome back${nextSession.userName ? `, ${nextSession.userName}` : ""}.`);
     } catch (loginError) {
       if (isBackendUnavailableError(loginError)) {
@@ -2232,7 +2262,7 @@ export default function App() {
       setItemUpdateReturnStep(null);
       await loadData();
       await workspace.loadShipmentRelated(created.id);
-      setActiveView("shipments");
+      selectWorkspaceView("shipments");
     }
   }
 
@@ -2245,7 +2275,7 @@ export default function App() {
     setOnlinePaymentInvoiceId(null);
     setShipmentWorkflowStep(null);
     setItemUpdateReturnStep(null);
-    setActiveView("shipments");
+    selectWorkspaceView("shipments");
   }
 
   async function handleShipmentAction(action: string) {
@@ -2308,7 +2338,7 @@ export default function App() {
       setLastItemDraft(submittedDraft);
       setItemDraft(initialShipmentItemDraft);
       setEditingItemId(null);
-      setActiveView("shipments");
+      selectWorkspaceView("shipments");
       pushToast(
         "info",
         editingItemId ? "Cargo item saved" : "Cargo item added",
@@ -2357,7 +2387,7 @@ export default function App() {
     setItemUpdateReturnStep(null);
     setWorkflowInvoice(null);
     setShipmentWorkflowStep("charges");
-    setActiveView("shipments");
+    selectWorkspaceView("shipments");
     pushToast("success", "Cargo confirmed", "Move on to charge generation when you are ready.");
   }
 
@@ -2369,7 +2399,7 @@ export default function App() {
 
     setShipmentWorkflowStep(itemUpdateReturnStep);
     setItemUpdateReturnStep(null);
-    setActiveView("shipments");
+    selectWorkspaceView("shipments");
   }
 
   async function loadInvoices() {
@@ -2481,7 +2511,7 @@ export default function App() {
     setShipmentWorkflowStep(null);
     setEditingItemId(null);
     setItemDraft(lastItemDraft);
-    setActiveView("shipments");
+    selectWorkspaceView("shipments");
     if (selectedShipment) void workspace.loadShipmentRelated(selectedShipment.id);
   }
 
@@ -2540,7 +2570,7 @@ export default function App() {
       if (reviewInvoice) {
         setWorkflowInvoice(reviewInvoice);
         setShipmentWorkflowStep("invoice");
-        setActiveView("shipments");
+        selectWorkspaceView("shipments");
         pushToast("info", "Invoice restored", "The latest invoice for this shipment is open for review.");
         return true;
       }
@@ -2548,7 +2578,7 @@ export default function App() {
       if (payableInvoice) {
         setWorkflowInvoice(null);
         setShipmentWorkflowStep(null);
-        setActiveView("finance");
+        selectWorkspaceView("finance");
         pushToast("info", "Payment step restored", "The invoice is ready for payment in finance.");
         return true;
       }
@@ -2556,7 +2586,7 @@ export default function App() {
       if (requestedStep === "charges" || nextWorkflowCharges.length > 0 || nextItems.length > 0 || restoredShipment.items?.length) {
         setWorkflowInvoice(null);
         setShipmentWorkflowStep("charges");
-        setActiveView("shipments");
+        selectWorkspaceView("shipments");
         pushToast("info", "Charge step restored", "Continue by generating charges for the saved cargo items.");
         return true;
       }
@@ -2704,7 +2734,7 @@ export default function App() {
           }
         }
 
-        setActiveView("finance");
+        selectWorkspaceView("finance");
         pushToast("success", "Invoice confirmed", "The invoice is ready for payment.");
       }
     })();
@@ -2772,7 +2802,7 @@ export default function App() {
       setLastItemDraft(initialShipmentItemDraft);
       workspace.setCharges([]);
       await workspace.loadShipmentRelated(shipmentId);
-      setActiveView("shipments");
+      selectWorkspaceView("shipments");
       pushToast(
         result.cleanupFailed ? "error" : "success",
         result.cleanupFailed ? "Invoice cancelled" : "Invoice cycle cancelled",
@@ -3416,6 +3446,10 @@ export default function App() {
 
     return (
       <AccountPage
+        activeSection={workspaceRoute?.view === "account" ? workspaceRoute.accountSection : "profile"}
+        onSectionChange={(section) => selectWorkspaceView("account", section)}
+        language={language}
+        onLanguageChange={setLanguage}
         profile={profile}
         customers={data.customers}
         currentCustomer={currentCustomer}
@@ -3556,6 +3590,7 @@ export default function App() {
         sidebarCollapsed={sidebarCollapsed}
         setSidebarCollapsed={setSidebarCollapsed}
         theme={theme}
+        language={language}
         onToggleTheme={handleToggleTheme}
         onOpenProfilePreview={() => setProfilePreviewOpen(true)}
         onLogout={() => void handleLogout()}

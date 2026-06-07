@@ -19,6 +19,17 @@ export function isoToLocalDateTime(value?: string) {
   return date.toISOString().slice(0, 16);
 }
 
+export function normalizeDateOnly(value?: string) {
+  if (!value) return "";
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return "";
+
+  const normalized = `${match[1]}-${match[2]}-${match[3]}`;
+  const date = new Date(`${normalized}T00:00:00Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== normalized) return "";
+  return normalized;
+}
+
 export function formatDate(value?: string) {
   if (!value) return "Pending";
   const date = new Date(value);
