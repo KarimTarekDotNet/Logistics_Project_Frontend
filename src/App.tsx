@@ -960,23 +960,17 @@ export default function App() {
         if (result.type === "registration-email") {
           const response = result.response;
           const pending = loadPendingVerification();
-          const nextPending = savePendingVerification({
+          const hasPhone = advanceAfterEmailConfirmation({
             ...pending,
             email: response.email || pending.email,
             phone: response.phoneNumber || pending.phone,
-            userName: response.userName || pending.userName,
-            emailConfirmed: true
-          });
-          setVerifyDraft((current) => ({
-            ...current,
-            email: nextPending.email,
-            phone: nextPending.phone,
-            phoneCode: ""
-          }));
-          setAuthMode("verify");
-          setVerificationStep("phone");
-          navigate("/auth/verify", { replace: true, scroll: false });
-          pushToast("success", "Email confirmed", response.message || "Enter the 6-digit code sent to your phone.");
+            userName: response.userName || pending.userName
+          }, true);
+          pushToast(
+            "success",
+            "Email confirmed",
+            response.message || (hasPhone ? "Enter the 6-digit code sent to your phone." : "Your account is ready. Sign in to continue.")
+          );
           return;
         }
 
@@ -1345,7 +1339,7 @@ export default function App() {
   }
 
   function getRegisteredPhone(form: RegisterForm) {
-    return `${form.countryCode}${form.phoneNumber}`;
+    return form.phoneNumber ? `${form.countryCode}${form.phoneNumber}` : "";
   }
 
   function phoneMatches(left: string, right: string) {
@@ -1397,6 +1391,31 @@ export default function App() {
     }));
 
     return nextPending;
+  }
+
+  function advanceAfterEmailConfirmation(
+    pending: {
+      email?: string;
+      phone?: string;
+      userName?: string;
+    },
+    replace = false
+  ) {
+    const nextPending = storePendingVerification({ ...pending, emailConfirmed: true });
+
+    if (nextPending.phone) {
+      setAuthMode("verify");
+      setVerificationStep("phone");
+      navigate("/auth/verify", { replace, scroll: false });
+      return true;
+    }
+
+    const identity = nextPending.email || nextPending.userName;
+    clearRegistrationVerification();
+    setLoginForm({ identity, password: "" });
+    setAuthMode("login");
+    navigate("/auth/login", { replace, scroll: false });
+    return false;
   }
 
   function resolvePendingVerificationForIdentity(identity: string, authPayload: ReturnType<typeof getAuthErrorPayload> = null) {
@@ -1520,8 +1539,12 @@ export default function App() {
 
     const response = await resendEmailConfirmationLink(pending.email);
     if (isEmailAlreadyConfirmedResponse(response)) {
-      storePendingVerification({ ...pending, emailConfirmed: true, email: response?.email || pending.email, phone: response?.phoneNumber || pending.phone });
-      setVerificationStep("phone");
+      advanceAfterEmailConfirmation({
+        ...pending,
+        email: response?.email || pending.email,
+        phone: response?.phoneNumber || pending.phone,
+        userName: response?.userName || pending.userName
+      }, true);
     }
   }
 
@@ -1585,7 +1608,10 @@ export default function App() {
     setBusy(true);
 
     try {
-      const response = await api.register(normalizedForm);
+      const response = await api.register({
+        ...normalizedForm,
+        phoneNumber: normalizedForm.phoneNumber || null
+      });
       const registeredPhone = response.phoneNumber || getRegisteredPhone(normalizedForm);
 
       storePendingVerification({
@@ -1628,14 +1654,12 @@ export default function App() {
 
         const response = await resendEmailConfirmationLink(email);
         if (isEmailAlreadyConfirmedResponse(response)) {
-          storePendingVerification({
+          advanceAfterEmailConfirmation({
             ...pending,
             email: response?.email || email,
             phone: response?.phoneNumber || pending.phone || verifyDraft.phone,
-            userName: response?.userName || pending.userName,
-            emailConfirmed: true
+            userName: response?.userName || pending.userName
           });
-          setVerificationStep("phone");
         }
         return response;
       },
@@ -1650,8 +1674,12 @@ export default function App() {
     try {
       const pending = loadPendingVerification();
       if (pending.emailConfirmed) {
-        setVerificationStep("phone");
-        pushToast("success", "Email confirmed", "Enter the 6-digit code sent to your registered phone.");
+        const hasPhone = advanceAfterEmailConfirmation(pending);
+        pushToast(
+          "success",
+          "Email confirmed",
+          hasPhone ? "Enter the 6-digit code sent to your registered phone." : "Your account is ready. Sign in to continue."
+        );
         return;
       }
 
@@ -1663,19 +1691,21 @@ export default function App() {
 
       const response = await resendEmailConfirmationLink(email);
       if (!isEmailAlreadyConfirmedResponse(response)) {
-        pushToast("info", "Use your email link", "Open the confirmation link from your inbox. We will move you to phone verification automatically.");
+        pushToast("info", "Use your email link", "Open the confirmation link from your inbox to finish verifying your account.");
         return;
       }
 
-      storePendingVerification({
+      const hasPhone = advanceAfterEmailConfirmation({
         ...pending,
         email: response?.email || email,
         phone: response?.phoneNumber || pending.phone || verifyDraft.phone,
-        userName: response?.userName || pending.userName,
-        emailConfirmed: true
+        userName: response?.userName || pending.userName
       });
-      setVerificationStep("phone");
-      pushToast("success", "Email confirmed", "Enter the 6-digit code sent to your registered phone.");
+      pushToast(
+        "success",
+        "Email confirmed",
+        hasPhone ? "Enter the 6-digit code sent to your registered phone." : "Your account is ready. Sign in to continue."
+      );
     } catch (confirmationError) {
       if (isBackendUnavailableError(confirmationError)) {
         handleBackendUnavailable();

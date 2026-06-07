@@ -317,8 +317,8 @@ export function AuthPage(props: {
                   <Field label="Country code" hint="More country options will be available in a future update.">
                     <input value="+20" readOnly aria-readonly="true" />
                   </Field>
-                  <Field label="Phone number">
-                    <input value={registerForm.phoneNumber} onChange={(event) => setRegisterForm({ ...registerForm, phoneNumber: event.target.value.replace(/\D/g, "").slice(0, 15) })} maxLength={15} inputMode="tel" required />
+                  <Field label="Phone number" hint="Optional">
+                    <input value={registerForm.phoneNumber} onChange={(event) => setRegisterForm({ ...registerForm, phoneNumber: event.target.value.replace(/\D/g, "").slice(0, 15) })} maxLength={15} inputMode="tel" />
                   </Field>
                 </div>
                 <div className="form-grid credential-field-grid">
