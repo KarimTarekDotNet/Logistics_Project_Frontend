@@ -1089,3 +1089,161 @@ html[dir="rtl"] .date-parts select {
     scroll-snap-align: start;
   }
 }
+
+/* Keep every workspace control readable and usable on narrow screens. */
+@media (max-width: 720px) {
+  .view-stack,
+  .view-stack > *,
+  .panel,
+  .panel > *,
+  form,
+  fieldset,
+  .form-stack,
+  .form-grid,
+  .dense-form,
+  .customer-form,
+  .tracking-form,
+  .endpoint-grid,
+  .endpoint-tool,
+  .rate-filter-panel,
+  .rate-filter-head,
+  .rate-filter-grid,
+  .settings-field-grid,
+  .credential-field-grid {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .form-grid,
+  .endpoint-grid,
+  .rate-filter-head,
+  .rate-filter-grid,
+  .settings-field-grid,
+  .credential-field-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .dense-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dense-form .field,
+  .quote-create-form .field,
+  .toolbar > *,
+  .rate-filter-footer > *,
+  .rate-filter-footer .button-row {
+    width: 100%;
+    min-width: 0 !important;
+    max-width: 100%;
+  }
+
+  .toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .toolbar-search,
+  .search-box,
+  .rate-search-field,
+  .combo-field,
+  .status-filter {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  select,
+  textarea {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100%;
+    font-family: var(--font-sans) !important;
+    font-size: 16px !important;
+    letter-spacing: normal;
+  }
+
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"],
+  input[type="month"] {
+    direction: ltr;
+    text-align: left;
+    unicode-bidi: isolate;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .field > span,
+  .settings-field > span,
+  .credential-field > span,
+  .check-row.compact span {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .button-row {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .dense-form > button,
+  .form-stack > button,
+  .rate-filter-footer .button-row > button {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .table-wrap table {
+    width: max-content;
+    min-width: 100%;
+    table-layout: auto;
+  }
+
+  .table-wrap thead th,
+  .table-wrap tbody td {
+    min-width: 128px;
+    max-width: 240px;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    vertical-align: middle;
+  }
+
+  .table-wrap thead th:first-child,
+  .table-wrap tbody td:first-child {
+    min-width: 144px;
+  }
+
+  .table-wrap thead th:last-child,
+  .table-wrap tbody td:last-child {
+    min-width: 76px;
+  }
+}
+
+@media (max-width: 420px) {
+  .view-stack {
+    padding-inline: 14px;
+  }
+
+  .date-parts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .date-parts select {
+    padding-inline: 8px 22px;
+  }
+
+  .button-row > button {
+    flex: 1 1 100%;
+  }
+}
