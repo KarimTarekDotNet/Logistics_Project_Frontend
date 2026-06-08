@@ -1351,7 +1351,7 @@ html[dir="rtl"] .date-parts select {
 }
 
 .price-ordered-grid {
-  direction: rtl;
+  direction: ltr;
 }
 
 .landing-plan-card,
