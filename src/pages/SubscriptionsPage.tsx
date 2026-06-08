@@ -20,6 +20,8 @@ type PlanDraft = {
   durationInDays: string;
 };
 
+type PlanDraftErrors = Partial<Record<keyof PlanDraft, string>>;
+
 const emptyPlanDraft: PlanDraft = {
   title: "",
   description: "",
@@ -27,17 +29,29 @@ const emptyPlanDraft: PlanDraft = {
   durationInDays: "30"
 };
 
-function toPlanPayload(draft: PlanDraft): CreateSubscriptionPlanRequest | null {
+function validatePlanDraft(draft: PlanDraft) {
+  const errors: PlanDraftErrors = {};
+  const title = draft.title.trim();
+  const description = draft.description.trim();
   const price = Number(draft.price);
   const durationInDays = Number(draft.durationInDays);
-  if (!draft.title.trim() || !draft.description.trim() || !Number.isFinite(price) || price <= 0) return null;
-  if (!Number.isInteger(durationInDays) || durationInDays <= 0) return null;
+
+  if (title.length < 3) errors.title = "Title must be at least 3 characters.";
+  else if (title.length > 100) errors.title = "Title cannot exceed 100 characters.";
+
+  if (description.length < 10) errors.description = "Description must be at least 10 characters.";
+  else if (description.length > 500) errors.description = "Description cannot exceed 500 characters.";
+
+  if (!Number.isFinite(price) || price <= 0) errors.price = "Price must be greater than 0.";
+  if (!Number.isInteger(durationInDays) || durationInDays <= 0) {
+    errors.durationInDays = "Duration must be a whole number greater than 0.";
+  }
 
   return {
-    title: draft.title.trim(),
-    description: draft.description.trim(),
-    price,
-    durationInDays
+    errors,
+    payload: Object.keys(errors).length === 0
+      ? { title, description, price, durationInDays } satisfies CreateSubscriptionPlanRequest
+      : null
   };
 }
 
@@ -72,8 +86,10 @@ export function SubscriptionsPage(props: {
   onDeletePlan: (id: string) => void;
 }) {
   const [createDraft, setCreateDraft] = useState<PlanDraft>(emptyPlanDraft);
+  const [createErrors, setCreateErrors] = useState<PlanDraftErrors>({});
   const [editingPlanId, setEditingPlanId] = useState("");
   const [editDraft, setEditDraft] = useState<PlanDraft>(emptyPlanDraft);
+  const [editErrors, setEditErrors] = useState<PlanDraftErrors>({});
   const selectedPlan = props.plans.find((plan) => plan.id === props.selectedPlanId);
   const activeTitles = new Set(
     props.currentSubscriptions.filter((subscription) => subscription.isActive).map((subscription) => subscription.subscriptionPlanTitle.toLowerCase())
@@ -88,16 +104,24 @@ export function SubscriptionsPage(props: {
 
   async function submitCreate(event: FormEvent) {
     event.preventDefault();
-    const payload = toPlanPayload(createDraft);
+    const { errors, payload } = validatePlanDraft(createDraft);
+    setCreateErrors(errors);
     if (!payload) return;
-    if (await props.onCreatePlan(payload)) setCreateDraft(emptyPlanDraft);
+    if (await props.onCreatePlan(payload)) {
+      setCreateDraft(emptyPlanDraft);
+      setCreateErrors({});
+    }
   }
 
   async function submitUpdate(event: FormEvent, planId: string) {
     event.preventDefault();
-    const payload = toPlanPayload(editDraft);
+    const { errors, payload } = validatePlanDraft(editDraft);
+    setEditErrors(errors);
     if (!payload) return;
-    if (await props.onUpdatePlan(planId, payload)) setEditingPlanId("");
+    if (await props.onUpdatePlan(planId, payload)) {
+      setEditingPlanId("");
+      setEditErrors({});
+    }
   }
 
   if (props.isUser && !props.currentCustomer) {
@@ -237,18 +261,56 @@ export function SubscriptionsPage(props: {
       {props.isPrivileged && (
         <section className="panel">
           <PanelTitle icon={<Plus size={18} />} title="Create plan" />
-          <form className="subscription-plan-form" onSubmit={submitCreate}>
-            <Field label="Title">
-              <input value={createDraft.title} onChange={(event) => setCreateDraft({ ...createDraft, title: event.target.value })} required />
+          <form className="subscription-plan-form" onSubmit={submitCreate} noValidate>
+            <Field label="Title" error={createErrors.title}>
+              <input
+                value={createDraft.title}
+                onChange={(event) => {
+                  setCreateDraft({ ...createDraft, title: event.target.value.slice(0, 100) });
+                  setCreateErrors((current) => ({ ...current, title: undefined }));
+                }}
+                minLength={3}
+                maxLength={100}
+                required
+              />
             </Field>
-            <Field label="Price (EGP)">
-              <input type="number" min="0.01" step="0.01" value={createDraft.price} onChange={(event) => setCreateDraft({ ...createDraft, price: event.target.value })} required />
+            <Field label="Price (EGP)" error={createErrors.price}>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={createDraft.price}
+                onChange={(event) => {
+                  setCreateDraft({ ...createDraft, price: event.target.value });
+                  setCreateErrors((current) => ({ ...current, price: undefined }));
+                }}
+                required
+              />
             </Field>
-            <Field label="Duration (days)">
-              <input type="number" min="1" step="1" value={createDraft.durationInDays} onChange={(event) => setCreateDraft({ ...createDraft, durationInDays: event.target.value })} required />
+            <Field label="Duration (days)" error={createErrors.durationInDays}>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={createDraft.durationInDays}
+                onChange={(event) => {
+                  setCreateDraft({ ...createDraft, durationInDays: event.target.value });
+                  setCreateErrors((current) => ({ ...current, durationInDays: undefined }));
+                }}
+                required
+              />
             </Field>
-            <Field label="Description">
-              <textarea value={createDraft.description} onChange={(event) => setCreateDraft({ ...createDraft, description: event.target.value })} required />
+            <Field label="Description" error={createErrors.description}>
+              <textarea
+                value={createDraft.description}
+                onChange={(event) => {
+                  setCreateDraft({ ...createDraft, description: event.target.value.slice(0, 500) });
+                  setCreateErrors((current) => ({ ...current, description: undefined }));
+                }}
+                minLength={10}
+                maxLength={500}
+                required
+              />
             </Field>
             <button className="primary-button compact" type="submit" disabled={props.busy}>
               <Plus size={16} />
@@ -274,19 +336,57 @@ export function SubscriptionsPage(props: {
               return (
                 <article className={`subscription-plan-card ${isSelected ? "selected" : ""} ${!plan.isActive ? "inactive" : ""}`} id={`subscription-plan-${plan.id}`} key={plan.id}>
                   {isEditing ? (
-                    <form className="subscription-edit-form" onSubmit={(event) => void submitUpdate(event, plan.id)}>
-                      <Field label="Title">
-                        <input value={editDraft.title} onChange={(event) => setEditDraft({ ...editDraft, title: event.target.value })} required />
+                    <form className="subscription-edit-form" onSubmit={(event) => void submitUpdate(event, plan.id)} noValidate>
+                      <Field label="Title" error={editErrors.title}>
+                        <input
+                          value={editDraft.title}
+                          onChange={(event) => {
+                            setEditDraft({ ...editDraft, title: event.target.value.slice(0, 100) });
+                            setEditErrors((current) => ({ ...current, title: undefined }));
+                          }}
+                          minLength={3}
+                          maxLength={100}
+                          required
+                        />
                       </Field>
-                      <Field label="Description">
-                        <textarea value={editDraft.description} onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })} required />
+                      <Field label="Description" error={editErrors.description}>
+                        <textarea
+                          value={editDraft.description}
+                          onChange={(event) => {
+                            setEditDraft({ ...editDraft, description: event.target.value.slice(0, 500) });
+                            setEditErrors((current) => ({ ...current, description: undefined }));
+                          }}
+                          minLength={10}
+                          maxLength={500}
+                          required
+                        />
                       </Field>
                       <div className="form-grid">
-                        <Field label="Price (EGP)">
-                          <input type="number" min="0.01" step="0.01" value={editDraft.price} onChange={(event) => setEditDraft({ ...editDraft, price: event.target.value })} required />
+                        <Field label="Price (EGP)" error={editErrors.price}>
+                          <input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            value={editDraft.price}
+                            onChange={(event) => {
+                              setEditDraft({ ...editDraft, price: event.target.value });
+                              setEditErrors((current) => ({ ...current, price: undefined }));
+                            }}
+                            required
+                          />
                         </Field>
-                        <Field label="Duration (days)">
-                          <input type="number" min="1" step="1" value={editDraft.durationInDays} onChange={(event) => setEditDraft({ ...editDraft, durationInDays: event.target.value })} required />
+                        <Field label="Duration (days)" error={editErrors.durationInDays}>
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={editDraft.durationInDays}
+                            onChange={(event) => {
+                              setEditDraft({ ...editDraft, durationInDays: event.target.value });
+                              setEditErrors((current) => ({ ...current, durationInDays: undefined }));
+                            }}
+                            required
+                          />
                         </Field>
                       </div>
                       <div className="button-row">
@@ -309,7 +409,16 @@ export function SubscriptionsPage(props: {
 
                       {props.isPrivileged ? (
                         <div className="button-row">
-                          <button className="secondary-button compact" type="button" onClick={() => { setEditingPlanId(plan.id); setEditDraft(planToDraft(plan)); }} disabled={props.busy}>
+                          <button
+                            className="secondary-button compact"
+                            type="button"
+                            onClick={() => {
+                              setEditingPlanId(plan.id);
+                              setEditDraft(planToDraft(plan));
+                              setEditErrors({});
+                            }}
+                            disabled={props.busy}
+                          >
                             <Pencil size={15} />Edit
                           </button>
                           <button className="mini-button danger" type="button" onClick={() => props.onDeletePlan(plan.id)} disabled={props.busy}>

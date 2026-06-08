@@ -27,6 +27,11 @@ export function getFriendlyErrorMessage(error: unknown, fallback = "The request 
   logTechnicalError("Request failed", error);
 
   if (error instanceof ApiError) {
+    const apiMessage = error.message.trim();
+    if ([400, 409, 422].includes(error.status) && apiMessage && !apiMessage.startsWith("Request failed with status")) {
+      return apiMessage;
+    }
+
     return getApiStatusMessage(error.status) ?? fallback;
   }
 

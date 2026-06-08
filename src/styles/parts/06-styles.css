@@ -220,7 +220,8 @@
 
 /* ── Field Error ── */
 .field.has-error input,
-.field.has-error select {
+.field.has-error select,
+.field.has-error textarea {
   border-color: var(--danger) !important;
 }
 

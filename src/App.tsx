@@ -1373,7 +1373,13 @@ export default function App() {
   async function runMutation<T>(
     label: string,
     mutation: () => Promise<T>,
-    options: { refresh?: boolean; successToast?: boolean; successMessage?: string; confirm?: boolean | ActionConfirmationOptions } = {}
+    options: {
+      refresh?: boolean;
+      successToast?: boolean;
+      successMessage?: string;
+      failureTitle?: string;
+      confirm?: boolean | ActionConfirmationOptions;
+    } = {}
   ): Promise<T | null> {
     if (options.confirm !== false) {
       const dangerousAction = /(delete|cancel|reject|revoke|refund|logout)/i.test(label);
@@ -1405,7 +1411,7 @@ export default function App() {
         handleBackendUnavailable();
         return null;
       }
-      pushToast("error", `${label} failed`, getFriendlyErrorMessage(mutationError));
+      pushToast("error", options.failureTitle ?? `${label} failed`, getFriendlyErrorMessage(mutationError));
       return null;
     } finally {
       setBusy(false);
@@ -3242,7 +3248,7 @@ export default function App() {
     const plan = await runMutation(
       "Subscription plan created",
       () => api.createSubscriptionPlan(session.accessToken, body),
-      { refresh: false }
+      { refresh: false, failureTitle: "Create subscription plan failed" }
     );
     if (plan) setSubscriptionPlans((current) => [plan, ...current.filter((item) => item.id !== plan.id)]);
     return Boolean(plan);
@@ -3253,7 +3259,7 @@ export default function App() {
     const plan = await runMutation(
       "Subscription plan updated",
       () => api.updateSubscriptionPlan(session.accessToken, id, body),
-      { refresh: false }
+      { refresh: false, failureTitle: "Update subscription plan failed" }
     );
     if (plan) setSubscriptionPlans((current) => current.map((item) => (item.id === plan.id ? plan : item)));
     return Boolean(plan);
