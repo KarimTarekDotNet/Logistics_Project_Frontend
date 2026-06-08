@@ -1,7 +1,7 @@
-import { BarChart3, Box, CheckCircle2, CircleDollarSign, Eye, Pencil, Plus, RotateCcw, Search, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
+import { Banknote, BarChart3, Box, CheckCircle2, Eye, Pencil, Plus, RotateCcw, Search, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ConfirmDialog, EmptyState, EntityActions, Field, MetricLine, PanelTitle, SectionHeader, StatusBadge } from "../components/ui";
-import { CURRENCY_LOCK_NOTE, DEFAULT_CURRENCY } from "../constants/logistics";
+import { CURRENCY_DISPLAY, CURRENCY_LOCK_NOTE, DEFAULT_CURRENCY } from "../constants/logistics";
 import type { Carrier, ContainerType, MarketAnalytics, Rate, RateBookFilterDraft, RateDraft, RateRecommendationDraft, RateRecommendationResponse, RecommendationPriority, Route } from "../types";
 import { formatMoney, formatShortDate, isoToLocalDateTime } from "../utils/format";
 
@@ -33,7 +33,7 @@ const rateSortOptions = [
 function CurrencyField() {
   return (
     <Field label="Currency" hint={CURRENCY_LOCK_NOTE}>
-      <input className="currency-lock-input" value={DEFAULT_CURRENCY} readOnly aria-readonly="true" />
+      <input className="currency-lock-input" value={CURRENCY_DISPLAY} readOnly aria-readonly="true" />
     </Field>
   );
 }
@@ -175,7 +175,7 @@ export function PricingPage(props: {
 
   return (
     <div className="view-stack">
-      <SectionHeader icon={<CircleDollarSign size={22} />} title="Pricing" meta={`${rates.length} rate cards`}>
+      <SectionHeader icon={<Banknote size={22} />} title="Pricing" meta={`${rates.length} rate cards`}>
         <div className="workspace-tabs pricing-tabs">
           <button className={mode === "ratebook" ? "active" : ""} type="button" onClick={() => onModeChange("ratebook")}>
             <Box size={16} />
@@ -456,7 +456,7 @@ export function PricingPage(props: {
               </div>
             </div>
           ) : (
-            <p className="panel-note">Select a route and container type to review live USD market analytics.</p>
+            <p className="panel-note">Select a route and container type to review live EGP market analytics.</p>
           )}
         </section>
 
@@ -769,7 +769,7 @@ export function PricingPage(props: {
             ))}
           </div>
         ) : (
-          <EmptyState icon={<CircleDollarSign size={28} />} title="No rates found" description="Adjust filters or create a new rate card." />
+          <EmptyState icon={<Banknote size={28} />} title="No rates found" description="Adjust filters or create a new rate card." />
         )}
 
         <div className="rate-pagination-bar" aria-label="Rate book pagination">

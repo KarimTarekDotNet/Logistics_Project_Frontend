@@ -1,4 +1,6 @@
-export const DEFAULT_CURRENCY = "USD";
+export const DEFAULT_CURRENCY = "EGP";
+export const CURRENCY_SYMBOL = "E£";
+export const CURRENCY_DISPLAY = `${DEFAULT_CURRENCY} (${CURRENCY_SYMBOL})`;
 export const CURRENCY_LOCK_NOTE = "";
 export const ALLOWED_CURRENCIES = [DEFAULT_CURRENCY] as const;
 

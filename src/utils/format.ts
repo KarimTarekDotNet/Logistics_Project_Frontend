@@ -1,4 +1,4 @@
-import { DEFAULT_CURRENCY } from "../constants/logistics";
+import { CURRENCY_SYMBOL, DEFAULT_CURRENCY } from "../constants/logistics";
 
 export function getLocalDateTime(daysFromNow = 0) {
   const date = new Date();
@@ -60,13 +60,14 @@ export function formatMoney(value: number, _currency = DEFAULT_CURRENCY) {
   const displayCurrency = DEFAULT_CURRENCY;
 
   try {
-    return new Intl.NumberFormat("en", {
+    return new Intl.NumberFormat("en-EG", {
       style: "currency",
       currency: displayCurrency,
+      currencyDisplay: "narrowSymbol",
       maximumFractionDigits: 2
     }).format(value);
   } catch {
-    return `${value.toLocaleString()} ${displayCurrency}`;
+    return `${CURRENCY_SYMBOL}${value.toLocaleString("en-EG", { maximumFractionDigits: 2 })}`;
   }
 }
 

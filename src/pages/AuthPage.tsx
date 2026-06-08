@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, CheckCircle2, CircleDollarSign, KeyRound, LogIn, Moon, Plus, Send, ShieldCheck, Ship, Sun, X } from "lucide-react";
+import { ArrowLeft, Banknote, Check, CheckCircle2, KeyRound, LogIn, Moon, Plus, Send, ShieldCheck, Ship, Sun, X } from "lucide-react";
 import { AuthOperationsMap } from "../components/auth/AuthOperationsMap";
 import { BrandLogo } from "../components/brand/BrandLogo";
 import { BRAND_NAME, BRAND_TAGLINE } from "../constants/brand";
@@ -114,7 +114,7 @@ export function AuthPage(props: {
     passwordsMatch;
 
   return (
-    <main className="auth-page">
+    <main className={`auth-page auth-page-${authMode}`}>
       <div className="auth-public-actions">
         <button className="ghost-button compact" type="button" onClick={onBackToLanding}>
           <ArrowLeft size={16} />
@@ -143,7 +143,7 @@ export function AuthPage(props: {
         <AuthOperationsMap />
 
         <div className="auth-metrics">
-          <StatCard icon={<CircleDollarSign size={20} />} label="Public rates" value={publicRateValue} tone="green" />
+          <StatCard icon={<Banknote size={20} />} label="Public rates" value={publicRateValue} tone="green" />
           <StatCard icon={<ShieldCheck size={20} />} label="Protected portal" value="Ready" tone="blue" />
           <StatCard icon={<Ship size={20} />} label="Workflow states" value={workflowValue} tone="amber" />
         </div>

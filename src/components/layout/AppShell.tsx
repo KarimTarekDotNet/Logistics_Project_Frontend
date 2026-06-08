@@ -12,7 +12,7 @@ import {
   UserRound,
   WalletCards,
   X,
-  CircleDollarSign
+  Banknote
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { BrandLogo } from "../brand/BrandLogo";
@@ -28,7 +28,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { view: "overview", label: { en: "Overview", ar: "نظرة عامة" }, icon: <LayoutDashboard size={18} /> },
-  { view: "pricing", label: { en: "Pricing", ar: "التسعير" }, icon: <CircleDollarSign size={18} /> },
+  { view: "pricing", label: { en: "Pricing", ar: "التسعير" }, icon: <Banknote size={18} /> },
   { view: "master-data", label: { en: "Master Data", ar: "البيانات الأساسية" }, icon: <Database size={18} />, privileged: true },
   { view: "quotes", label: { en: "Quotes", ar: "عروض الأسعار" }, icon: <ClipboardList size={18} /> },
   { view: "shipments", label: { en: "Shipments", ar: "الشحنات" }, icon: <Ship size={18} /> },

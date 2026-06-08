@@ -1,4 +1,4 @@
-import { Calculator, CircleDollarSign, PackageCheck, Pencil, ReceiptText } from "lucide-react";
+import { Banknote, Calculator, PackageCheck, Pencil, ReceiptText } from "lucide-react";
 import { EmptyState, PanelTitle, SectionHeader } from "../components/ui";
 import { ShipmentContextPanel } from "../features/shipments/ShipmentContextPanel";
 import { getUninvoicedWorkflowCharges } from "../features/shipments/shipmentCharges";
@@ -40,7 +40,7 @@ export function ChargeGenerationPage(props: {
               <p>
                 {hasCharges
                   ? "Saved shipment charges are loaded. Review them, then create the draft invoice for confirmation."
-                  : "Charges are calculated in USD from the active rules, cargo totals, volume, and agreed value."}
+                  : "Charges are calculated in EGP from the active rules, cargo totals, volume, and agreed value."}
               </p>
             </div>
             <button
@@ -61,7 +61,7 @@ export function ChargeGenerationPage(props: {
           </section>
 
           <section className="panel">
-            <PanelTitle icon={<CircleDollarSign size={18} />} title="Charges preview" />
+            <PanelTitle icon={<Banknote size={18} />} title="Charges preview" />
             <div className="compact-list">
               {workflowCharges.map((charge) => (
                 <div className="list-row" key={charge.id}>

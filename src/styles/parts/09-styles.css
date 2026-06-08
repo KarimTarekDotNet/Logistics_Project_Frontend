@@ -829,6 +829,48 @@
 }
 
 @media (max-width: 900px) {
+  .auth-page {
+    display: flex;
+    min-height: 100svh;
+    min-height: 100dvh;
+    align-items: center;
+    flex-direction: column;
+    padding: 78px 0 24px;
+  }
+
+  .auth-public-actions {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 30;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: color-mix(in srgb, var(--bg-base) 94%, transparent);
+    border-bottom: 1px solid var(--border-subtle);
+    backdrop-filter: blur(14px);
+  }
+
+  .auth-panel {
+    width: min(calc(100% - 32px), 460px);
+    max-width: 460px;
+    min-height: auto;
+    margin: auto 0;
+    padding: clamp(26px, 6vw, 38px);
+    justify-content: flex-start;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 24px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
+  }
+
+  .auth-page-login .auth-panel,
+  .auth-page-verify .auth-panel {
+    justify-content: center;
+  }
+
+  .auth-page-register .auth-panel {
+    margin-block: 0;
+  }
+
   .stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
@@ -1053,6 +1095,24 @@ html[dir="rtl"] .date-parts select {
 }
 
 @media (max-width: 640px) {
+  .auth-page {
+    padding-top: 72px;
+  }
+
+  .auth-panel {
+    width: min(calc(100% - 24px), 440px);
+    padding: 26px 20px;
+    border-radius: 20px;
+  }
+
+  .auth-form-header {
+    align-items: flex-start;
+  }
+
+  .auth-panel .segmented {
+    width: 100%;
+  }
+
   .field input,
   .field select,
   .field textarea,

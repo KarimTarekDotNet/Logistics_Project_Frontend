@@ -1,4 +1,4 @@
-import { Activity, BarChart3, CircleDollarSign, ClipboardList, Clock3, LayoutDashboard, Ship } from "lucide-react";
+import { Activity, Banknote, BarChart3, ClipboardList, Clock3, LayoutDashboard, Ship } from "lucide-react";
 import { EmptyState, PanelTitle, SectionHeader, StatCard, StatusBadge } from "../components/ui";
 import type { Quote, Rate, Shipment } from "../types";
 import { formatDate, formatMoney } from "../utils/format";
@@ -21,7 +21,7 @@ export function OverviewPage(props: {
 
       <div className="stat-grid">
         <StatCard icon={<Activity size={20} />} label="Open shipments" value={stats.openShipments} tone="blue" />
-        <StatCard icon={<CircleDollarSign size={20} />} label="Active rates" value={stats.activeRates} tone="green" />
+        <StatCard icon={<Banknote size={20} />} label="Active rates" value={stats.activeRates} tone="green" />
         <StatCard icon={<ClipboardList size={20} />} label="Quoted value" value={formatMoney(stats.quotedValue)} tone="amber" />
         <StatCard icon={<Ship size={20} />} label="Shipment value" value={formatMoney(stats.shipmentValue)} tone="red" />
       </div>

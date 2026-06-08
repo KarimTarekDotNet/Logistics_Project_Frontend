@@ -24,7 +24,7 @@ import { BrandLogo } from "../components/brand/BrandLogo";
 import { BRAND_NAME } from "../constants/brand";
 
 const modules = [
-  { title: "Rate management", text: "Keep carrier rates, lanes, containers, USD pricing, validity, and active pricing controls in one governed rate book.", icon: WalletCards },
+  { title: "Rate management", text: "Keep carrier rates, lanes, containers, EGP pricing, validity, and active pricing controls in one governed rate book.", icon: WalletCards },
   { title: "Quote generation", text: "Convert controlled rates and operational charges into customer-ready quotations without rebuilding pricing context.", icon: ClipboardList },
   { title: "Shipment lifecycle", text: "Run each file from confirmation through booking, B/L, payment, telex release, delivery, and close.", icon: Ship },
   { title: "Cargo items", text: "Capture quantity, weight, CBM, marks, hazardous cargo, and temperature requirements on the shipment record.", icon: Boxes },

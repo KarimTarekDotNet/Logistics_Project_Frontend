@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, CircleDollarSign, ExternalLink, Moon, Send, ShieldCheck, Sun, Weight } from "lucide-react";
+import { ArrowLeft, Banknote, CheckCircle2, ExternalLink, Moon, Send, ShieldCheck, Sun, Weight } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { BrandLogo } from "../components/brand/BrandLogo";
 import { EmptyState, Field, LoadingSpinner, MetricLine, PanelTitle, StatusBadge } from "../components/ui";
@@ -243,7 +243,7 @@ export function RateDetailsPage(props: {
 
           <div className="rate-detail-grid">
             <section className="panel">
-              <PanelTitle icon={<CircleDollarSign size={18} />} title="Commercial details" />
+              <PanelTitle icon={<Banknote size={18} />} title="Commercial details" />
               <div className="detail-grid">
                 <MetricLine label="Carrier" value={rate.carrierName} />
                 <MetricLine label="Route" value={`${rate.fromPortCode} to ${rate.toPortCode}`} />

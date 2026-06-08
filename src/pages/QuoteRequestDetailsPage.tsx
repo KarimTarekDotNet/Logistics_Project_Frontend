@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, CircleDollarSign, ClipboardList, Clock3, PackageCheck, UserRound, XCircle } from "lucide-react";
+import { ArrowLeft, Banknote, CheckCircle2, ClipboardList, Clock3, PackageCheck, UserRound, XCircle } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { EmptyState, Field, LoadingSpinner, MetricLine, PanelTitle, SectionHeader, StatusBadge } from "../components/ui";
 import type { QuoteRequest } from "../types";
@@ -106,7 +106,7 @@ export function QuoteRequestDetailsPage(props: {
 
       <div className="rate-detail-grid">
         <section className="panel">
-          <PanelTitle icon={<CircleDollarSign size={18} />} title="Commercial details" />
+          <PanelTitle icon={<Banknote size={18} />} title="Commercial details" />
           <div className="detail-grid">
             <MetricLine label="Carrier" value={request.carrierName} />
             <MetricLine label="Route" value={`${request.fromPortCode} to ${request.toPortCode}`} />
