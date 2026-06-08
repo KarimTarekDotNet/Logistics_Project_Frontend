@@ -3,6 +3,7 @@ import {
   Boxes,
   CheckCircle2,
   ClipboardList,
+  Crown,
   Facebook,
   FileText,
   Instagram,
@@ -22,6 +23,8 @@ import {
 import { useEffect, useState } from "react";
 import { BrandLogo } from "../components/brand/BrandLogo";
 import { BRAND_NAME } from "../constants/brand";
+import type { SubscriptionPlan } from "../types";
+import { formatMoney } from "../utils/format";
 
 const modules = [
   { title: "Rate management", text: "Keep carrier rates, lanes, containers, EGP pricing, validity, and active pricing controls in one governed rate book.", icon: WalletCards },
@@ -35,6 +38,7 @@ const modules = [
 const navSections = [
   { id: "platform", label: "Platform" },
   { id: "workflow", label: "Workflow" },
+  { id: "plans", label: "Plans" },
   { id: "modules", label: "Modules" },
   { id: "security", label: "Security" }
 ];
@@ -63,6 +67,9 @@ export function PublicLandingPage(props: {
   theme: "light" | "dark";
   onToggleTheme: () => void;
   serverUnavailable?: boolean;
+  plans: SubscriptionPlan[];
+  plansLoading?: boolean;
+  onSelectPlan: (planId: string) => void;
 }) {
   const [activeSection, setActiveSection] = useState("platform");
   const currentYear = new Date().getFullYear();
@@ -191,7 +198,7 @@ export function PublicLandingPage(props: {
             <div className="visual-card rate-preview-card">
               <span>Active lane</span>
               <strong>CNSHA to NLRTM</strong>
-              <small>20ft Standard - EUR 1,500 - Valid 30 days</small>
+              <small>20ft Standard - EGP 1,500 - Valid 30 days</small>
             </div>
             <div className="visual-card map-preview-card">
               <span>Route monitor</span>
@@ -281,6 +288,37 @@ export function PublicLandingPage(props: {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="landing-section landing-plans-section" id="plans">
+        <div className="section-copy centered">
+          <span className="landing-kicker">Subscription plans</span>
+          <h2>Choose the operating plan that fits your forwarding workflow.</h2>
+          <p>Select a plan now, then sign in or create an account. Your choice stays with you through customer setup and secure payment.</p>
+        </div>
+        {props.plansLoading ? (
+          <div className="landing-plan-loading">Loading subscription plans...</div>
+        ) : props.plans.filter((plan) => plan.isActive).length === 0 ? (
+          <div className="landing-plan-empty">Subscription plans will be available soon.</div>
+        ) : (
+          <div className="landing-plan-grid">
+            {props.plans.filter((plan) => plan.isActive).map((plan) => (
+              <article className="landing-plan-card" key={plan.id}>
+                <Crown size={22} />
+                <h3>{plan.title}</h3>
+                <p>{plan.description}</p>
+                <div className="landing-plan-price">
+                  <strong>{formatMoney(plan.price)}</strong>
+                  <span>for {plan.durationInDays} days</span>
+                </div>
+                <button className="primary-button" type="button" onClick={() => props.onSelectPlan(plan.id)} disabled={authDisabled}>
+                  Choose plan
+                  <ArrowRight size={16} />
+                </button>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="landing-section" id="modules">

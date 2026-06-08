@@ -17,7 +17,7 @@ function splitDate(value: string): DateParts {
   return { day, month, year };
 }
 
-function DateOfBirthInput(props: {
+export function DateOfBirthInput(props: {
   value: string;
   language: AppLanguage;
   onChange: (value: string) => void;

@@ -4,7 +4,7 @@ import { BrandLogo } from "../components/brand/BrandLogo";
 import { BRAND_NAME, BRAND_TAGLINE } from "../constants/brand";
 import { useEffect, useState, type FormEvent } from "react";
 import { Field, LoadingSpinner, OtpInput, PasswordInput, StatCard } from "../components/ui";
-import type { RegisterForm, VerificationStep, VerifyDraft } from "../types";
+import type { RegisterForm, SubscriptionPlan, VerificationStep, VerifyDraft } from "../types";
 import { maskPhone } from "../utils/session";
 
 function Requirement(props: { met: boolean; children: string }) {
@@ -38,6 +38,7 @@ export function AuthPage(props: {
   theme: "light" | "dark";
   onToggleTheme: () => void;
   onBackToLanding: () => void;
+  selectedPlan?: SubscriptionPlan;
 }) {
   const {
     authMode,
@@ -150,6 +151,13 @@ export function AuthPage(props: {
       </section>
 
       <section className="auth-panel">
+        {props.selectedPlan && (
+          <div className="auth-plan-context">
+            <span>Selected subscription</span>
+            <strong>{props.selectedPlan.title}</strong>
+            <small>Your plan will stay selected after authentication.</small>
+          </div>
+        )}
         {authMode === "verify" ? (
           <div className="verify-flow">
             <button type="button" className="back-link" onClick={() => setAuthMode("login")}>

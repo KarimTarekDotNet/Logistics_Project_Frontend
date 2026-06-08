@@ -1307,3 +1307,236 @@ html[dir="rtl"] .date-parts select {
     flex: 1 1 100%;
   }
 }
+
+/* Subscription plans, onboarding, and role-based management. */
+.auth-plan-context {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  color: var(--text-secondary);
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border-subtle));
+  border-radius: var(--radius-md);
+}
+
+.auth-plan-context span,
+.subscription-step,
+.selected-plan-label {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.auth-plan-context strong {
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.auth-plan-context small {
+  color: var(--text-muted);
+}
+
+.landing-plans-section {
+  scroll-margin-top: 88px;
+}
+
+.landing-plan-grid,
+.subscription-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.landing-plan-card,
+.subscription-plan-card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 26px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+
+.landing-plan-card:hover,
+.subscription-plan-card:hover,
+.subscription-plan-card.selected {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow);
+}
+
+.landing-plan-card > svg {
+  color: var(--accent);
+}
+
+.landing-plan-card h3,
+.subscription-plan-card h3,
+.current-subscription-card h3,
+.selected-plan-summary h2 {
+  color: var(--text-primary);
+  font-size: 1.15rem !important;
+}
+
+.landing-plan-card p,
+.subscription-plan-card p,
+.selected-plan-summary p {
+  flex: 1;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.landing-plan-price,
+.subscription-plan-price {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.landing-plan-price strong,
+.subscription-plan-price strong,
+.selected-plan-summary > strong {
+  color: var(--text-primary);
+  font-size: 1.55rem;
+}
+
+.landing-plan-price span,
+.subscription-plan-price span,
+.selected-plan-summary small {
+  color: var(--text-muted);
+}
+
+.landing-plan-loading,
+.landing-plan-empty {
+  padding: 36px;
+  color: var(--text-muted);
+  text-align: center;
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.subscriptions-page {
+  display: grid;
+  gap: 24px;
+}
+
+.subscription-onboarding-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.75fr) minmax(0, 1.25fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.selected-plan-summary {
+  display: grid;
+  gap: 14px;
+}
+
+.subscription-customer-form,
+.subscription-plan-form,
+.subscription-edit-form {
+  display: grid;
+  gap: 16px;
+}
+
+.subscription-plan-form {
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.35fr) minmax(150px, 0.35fr);
+  align-items: end;
+}
+
+.subscription-plan-form .field:nth-child(4) {
+  grid-column: 1 / -1;
+}
+
+.subscription-plan-form > button {
+  justify-self: start;
+}
+
+.subscription-plan-form textarea,
+.subscription-edit-form textarea {
+  width: 100%;
+  min-height: 96px;
+  padding: 12px 13px;
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  resize: vertical;
+}
+
+.subscription-plan-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.subscription-plan-card.inactive {
+  opacity: 0.68;
+}
+
+.subscription-plan-card > button {
+  width: 100%;
+  justify-content: center;
+  margin-top: auto;
+}
+
+.current-subscription-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.current-subscription-card {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.current-subscription-card span:last-child {
+  color: var(--text-muted);
+}
+
+@media (max-width: 1050px) {
+  .landing-plan-grid,
+  .subscription-plan-grid,
+  .current-subscription-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .subscription-onboarding-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .landing-plan-grid,
+  .subscription-plan-grid,
+  .current-subscription-grid,
+  .subscription-plan-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .subscription-plan-form .field:nth-child(4) {
+    grid-column: auto;
+  }
+
+  .landing-plan-card,
+  .subscription-plan-card {
+    padding: 22px 18px;
+  }
+
+  .subscription-plan-form > button {
+    width: 100%;
+    justify-content: center;
+  }
+}

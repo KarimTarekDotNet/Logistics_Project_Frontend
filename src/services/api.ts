@@ -3,13 +3,14 @@ import type {
   AuthSession,
   Carrier,
   CheckoutPaymentResponse,
+  CreateSubscriptionPlanRequest,
   ContainerType,
   Customer,
   Invoice,
   InvoicePayment,
   InvoicePaymentRequest,
   MarketAnalytics,
-  PaymentTransaction,
+  PaymentTransactionResponse,
   Port,
   ProfileResponse,
   ProfileUpdateResponse,
@@ -25,8 +26,12 @@ import type {
   ShipmentDocument,
   ShipmentHistory,
   ShipmentItem,
+  StartPaymentRequest,
   StartPaymentResponse,
-  TimelineItem
+  SubscriptionPlan,
+  TimelineItem,
+  UpdateSubscriptionPlanRequest,
+  UserSubscription
 } from "../types";
 import { sessionFromAuth } from "../utils/session";
 
@@ -228,6 +233,15 @@ function extractCsrfToken(payload: unknown) {
   const record = payload as Record<string, unknown>;
   const token = record.requestToken ?? record.csrfToken ?? record.token ?? record.xsrfToken ?? record.antiForgeryToken;
   return typeof token === "string" ? token.trim() : "";
+}
+
+function normalizeUserSubscriptions(payload: {
+  sub?: UserSubscription | UserSubscription[] | null;
+  Sub?: UserSubscription | UserSubscription[] | null;
+}) {
+  const subscriptions = payload.sub ?? payload.Sub;
+  if (!subscriptions) return [];
+  return Array.isArray(subscriptions) ? subscriptions : [subscriptions];
 }
 
 function resolveRequestBody(method: string, body: unknown): BodyInit | undefined {
@@ -813,6 +827,42 @@ export const api = {
     return request<string>("/api/Customer", { method: "DELETE", token });
   },
 
+  getSubscriptionPlans() {
+    return request<SubscriptionPlan[]>("/api/SubscriptionPlan");
+  },
+
+  getSubscriptionPlan(id: string) {
+    return request<SubscriptionPlan>(`/api/SubscriptionPlan/${id}`);
+  },
+
+  createSubscriptionPlan(token: string, body: CreateSubscriptionPlanRequest) {
+    return request<SubscriptionPlan>("/api/SubscriptionPlan", { method: "POST", token, body });
+  },
+
+  updateSubscriptionPlan(token: string, id: string, body: UpdateSubscriptionPlanRequest) {
+    return request<SubscriptionPlan>(`/api/SubscriptionPlan/${id}`, { method: "PUT", token, body });
+  },
+
+  deleteSubscriptionPlan(token: string, id: string) {
+    return request<string>(`/api/SubscriptionPlan/${id}`, { method: "DELETE", token });
+  },
+
+  async getUserSubscriptions(token: string) {
+    const payload = await request<{
+      sub?: UserSubscription | UserSubscription[] | null;
+      Sub?: UserSubscription | UserSubscription[] | null;
+    }>("/api/UserSubscription", { token });
+    return normalizeUserSubscriptions(payload);
+  },
+
+  async getCurrentUserSubscriptions(token: string) {
+    const payload = await request<{
+      sub?: UserSubscription | UserSubscription[] | null;
+      Sub?: UserSubscription | UserSubscription[] | null;
+    }>("/api/UserSubscription/current", { token });
+    return normalizeUserSubscriptions(payload);
+  },
+
   getProfile(token: string) {
     return request<ProfileResponse>("/api/user/profile", { token });
   },
@@ -1002,7 +1052,7 @@ export const api = {
     return request<string>(`/api/Invoice/${id}`, { method: "DELETE", token });
   },
 
-  startPayment(token: string, body: { invoiceId: string }) {
+  startPayment(token: string, body: StartPaymentRequest) {
     return request<StartPaymentResponse>("/api/Payment/start", { method: "POST", token, body });
   },
 
@@ -1014,7 +1064,7 @@ export const api = {
   },
 
   getPaymentTransaction(token: string, id: string) {
-    return request<PaymentTransaction>(`/api/Payment/${id}`, { token });
+    return request<PaymentTransactionResponse>(`/api/Payment/${id}`, { token });
   },
 
   cancelPayment(token: string, paymentTransactionId: string) {

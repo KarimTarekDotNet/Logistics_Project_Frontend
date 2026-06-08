@@ -3,6 +3,7 @@ export type Role = "Admin" | "Staff" | "User" | "Integration";
 export type View =
   | "overview"
   | "pricing"
+  | "subscriptions"
   | "master-data"
   | "quotes"
   | "shipments"
@@ -363,13 +364,14 @@ export type InvoicePayment = {
 
 export type PaymentTransactionStatus = "Pending" | "Succeeded" | "Failed" | "Refunded" | "Cancelled" | number;
 
+export type StartPaymentRequest = {
+  invoiceId?: string | null;
+  subscriptionPlanId?: string | null;
+};
+
 export type StartPaymentResponse = {
   paymentTransactionId: string;
-  url?: string | null;
-  checkoutUrl?: string | null;
-  redirectUrl?: string | null;
-  paymentUrl?: string | null;
-  clientSecret?: string | null;
+  clientSecret: string;
   status: PaymentTransactionStatus;
 };
 
@@ -378,9 +380,10 @@ export type CheckoutPaymentResponse = {
   CheckoutUrl?: string | null;
 };
 
-export type PaymentTransaction = {
+export type PaymentTransactionResponse = {
   id: string;
   invoiceId?: string | null;
+  subscriptionPlanId?: string | null;
   amount: number;
   currency: string;
   provider: string;
@@ -388,6 +391,39 @@ export type PaymentTransaction = {
   status: string;
   failureReason?: string | null;
   paidAt?: string | null;
+  createdAt: string;
+};
+
+export type SubscriptionPlan = {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  durationInDays: number;
+  isActive: boolean;
+};
+
+export type CreateSubscriptionPlanRequest = {
+  title: string;
+  description: string;
+  price: number;
+  durationInDays: number;
+};
+
+export type UpdateSubscriptionPlanRequest = {
+  title?: string | null;
+  description?: string | null;
+  price?: number | null;
+  durationInDays?: number | null;
+};
+
+export type UserSubscription = {
+  id: string;
+  username: string;
+  subscriptionPlanTitle: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
   createdAt: string;
 };
 

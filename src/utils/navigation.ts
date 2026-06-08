@@ -6,6 +6,7 @@ const SPA_REDIRECT_KEY = "flowtix:spa-redirect";
 const workspaceViews = new Set<View>([
   "overview",
   "pricing",
+  "subscriptions",
   "master-data",
   "quotes",
   "shipments",

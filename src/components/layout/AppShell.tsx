@@ -1,5 +1,6 @@
 import {
   ClipboardList,
+  Crown,
   Database,
   FileText,
   LayoutDashboard,
@@ -27,6 +28,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
+  { view: "subscriptions", label: { en: "Subscriptions", ar: "الاشتراكات" }, icon: <Crown size={18} /> },
   { view: "overview", label: { en: "Overview", ar: "نظرة عامة" }, icon: <LayoutDashboard size={18} /> },
   { view: "pricing", label: { en: "Pricing", ar: "التسعير" }, icon: <Banknote size={18} /> },
   { view: "master-data", label: { en: "Master Data", ar: "البيانات الأساسية" }, icon: <Database size={18} />, privileged: true },

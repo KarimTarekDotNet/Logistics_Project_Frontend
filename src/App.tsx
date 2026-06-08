@@ -29,6 +29,7 @@ import type {
   AuthSession,
   Carrier,
   ContainerType,
+  CreateSubscriptionPlanRequest,
   Customer,
   CustomerDraft,
   Invoice,
@@ -54,7 +55,10 @@ import type {
   ShipmentCharge,
   ShipmentItem,
   ShipmentItemDraft,
+  SubscriptionPlan,
   TrackingDraft,
+  UpdateSubscriptionPlanRequest,
+  UserSubscription,
   VerificationStep,
   VerifyDraft,
   View
@@ -73,6 +77,11 @@ import {
   savePendingCardPayment,
   type PaymentReturnDetails
 } from "./utils/payment";
+import {
+  clearPendingSubscriptionPlan,
+  loadPendingSubscriptionPlan,
+  savePendingSubscriptionPlan
+} from "./utils/subscriptions";
 import {
   clearPendingVerification,
   loadPendingVerification,
@@ -94,6 +103,7 @@ const QuoteRequestDetailsPage = lazy(() => import("./pages/QuoteRequestDetailsPa
 const QuotesPage = lazy(() => import("./pages/QuotesPage").then((module) => ({ default: module.QuotesPage })));
 const RateDetailsPage = lazy(() => import("./pages/RateDetailsPage").then((module) => ({ default: module.RateDetailsPage })));
 const ShipmentsPage = lazy(() => import("./pages/ShipmentsPage").then((module) => ({ default: module.ShipmentsPage })));
+const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage").then((module) => ({ default: module.SubscriptionsPage })));
 
 const initialData: AppData = {
   rates: [],
@@ -288,12 +298,20 @@ function shouldCancelPendingPayment(details: PaymentReturnDetails, transactionSt
   return isPaymentReturnCancelled(details, transactionStatus) || isPaymentReturnFailed(details, transactionStatus);
 }
 
-function getPaymentReturnToast(details: PaymentReturnDetails, transactionStatus?: string | number | null) {
+function getPaymentReturnToast(
+  details: PaymentReturnDetails,
+  transactionStatus?: string | number | null,
+  target: "invoice" | "subscription" = "invoice"
+) {
+  const isSubscription = target === "subscription";
+
   if (isPaymentReturnSuccess(details, transactionStatus)) {
     return {
       type: "success" as const,
-      title: "Payment received",
-      message: "Your card payment response was received. Finance has been refreshed."
+      title: isSubscription ? "Subscription payment received" : "Payment received",
+      message: isSubscription
+        ? "Your payment was received. Your subscription status is being refreshed."
+        : "Your card payment response was received. Finance has been refreshed."
     };
   }
 
@@ -301,7 +319,9 @@ function getPaymentReturnToast(details: PaymentReturnDetails, transactionStatus?
     return {
       type: "info" as const,
       title: "Payment cancelled",
-      message: "The card checkout was cancelled. The invoice is still available in finance."
+      message: isSubscription
+        ? "The card checkout was cancelled. You can try the selected plan again."
+        : "The card checkout was cancelled. The invoice is still available in finance."
     };
   }
 
@@ -309,14 +329,18 @@ function getPaymentReturnToast(details: PaymentReturnDetails, transactionStatus?
     return {
       type: "error" as const,
       title: "Payment not completed",
-      message: "The card payment was declined or cancelled. You can try again from the invoice."
+      message: isSubscription
+        ? "The card payment was declined or cancelled. You can try the selected plan again."
+        : "The card payment was declined or cancelled. You can try again from the invoice."
     };
   }
 
   return {
     type: "info" as const,
     title: "Payment pending",
-    message: "The payment response is pending confirmation. Finance has been refreshed."
+    message: isSubscription
+      ? "The payment is awaiting confirmation. Your subscriptions will refresh automatically."
+      : "The payment response is pending confirmation. Finance has been refreshed."
   };
 }
 
@@ -417,6 +441,12 @@ export default function App() {
   const [shipmentWorkflowStep, setShipmentWorkflowStep] = useState<ShipmentWorkflowStep | null>(null);
   const [workflowInvoice, setWorkflowInvoice] = useState<Invoice | null>(null);
   const [onlinePaymentInvoiceId, setOnlinePaymentInvoiceId] = useState<string | null>(null);
+  const [onlinePaymentSubscriptionPlanId, setOnlinePaymentSubscriptionPlanId] = useState<string | null>(null);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
+  const [subscriptionPlansLoading, setSubscriptionPlansLoading] = useState(true);
+  const [userSubscriptions, setUserSubscriptions] = useState<UserSubscription[]>([]);
+  const [currentSubscriptions, setCurrentSubscriptions] = useState<UserSubscription[]>([]);
+  const [selectedSubscriptionPlanId, setSelectedSubscriptionPlanId] = useState(() => loadPendingSubscriptionPlan());
   const [pageLoading, setPageLoading] = useState(false);
   const [profilePreviewOpen, setProfilePreviewOpen] = useState(false);
   const [quoteRequestDetailId, setQuoteRequestDetailId] = useState<string | null>(null);
@@ -554,6 +584,7 @@ export default function App() {
   const isAdmin = Boolean(session?.roles.includes("Admin"));
   const isUser = Boolean(session?.roles.includes("User"));
   const currentCustomer = data.currentCustomer ?? profile?.customer;
+  const selectedSubscriptionPlan = subscriptionPlans.find((plan) => plan.id === selectedSubscriptionPlanId);
   const hasCustomerProfile = isPrivileged || Boolean(currentCustomer);
   const isCustomerLockedView = !isPrivileged && CUSTOMER_LOCKED_VIEWS.has(activeView) && !hasCustomerProfile;
   const selectedShipment =
@@ -590,6 +621,9 @@ export default function App() {
       setInvoices([]);
       setWorkflowInvoice(null);
       setOnlinePaymentInvoiceId(null);
+      setOnlinePaymentSubscriptionPlanId(null);
+      setUserSubscriptions([]);
+      setCurrentSubscriptions([]);
       setShipmentWorkflowStep(null);
       setItemUpdateReturnStep(null);
       closeQuoteRequestDetails();
@@ -730,6 +764,56 @@ export default function App() {
     ]
   );
 
+  const loadUserSubscriptionData = useCallback(async () => {
+    if (!session?.accessToken || !isUser) {
+      setUserSubscriptions([]);
+      setCurrentSubscriptions([]);
+      return;
+    }
+
+    const [historyResult, currentResult] = await Promise.allSettled([
+      api.getUserSubscriptions(session.accessToken),
+      api.getCurrentUserSubscriptions(session.accessToken)
+    ]);
+
+    if (historyResult.status === "fulfilled") {
+      setUserSubscriptions(historyResult.value);
+    } else if (isNotFoundError(historyResult.reason)) {
+      setUserSubscriptions([]);
+    }
+
+    if (currentResult.status === "fulfilled") {
+      setCurrentSubscriptions(currentResult.value);
+    } else if (isNotFoundError(currentResult.reason)) {
+      setCurrentSubscriptions([]);
+    }
+  }, [isUser, session?.accessToken]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSubscriptionPlansLoading(true);
+
+    void api.getSubscriptionPlans()
+      .then((plans) => {
+        if (!cancelled) setSubscriptionPlans(plans);
+      })
+      .catch((error) => {
+        if (!cancelled && isNotFoundError(error)) setSubscriptionPlans([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSubscriptionPlansLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeView !== "subscriptions") return;
+    void loadUserSubscriptionData();
+  }, [activeView, loadUserSubscriptionData]);
+
   useLayoutEffect(() => {
     const currentPath = getAppPath();
     const confirmationLink = readConfirmationLink(currentPath);
@@ -762,11 +846,17 @@ export default function App() {
 
     const currentPathname = getAppPathname(path).toLowerCase();
     if (currentPathname === "/") {
-      setActiveView("overview");
+      const destination = selectedSubscriptionPlanId ? "subscriptions" : "overview";
+      setActiveView(destination);
+      if (selectedSubscriptionPlanId) {
+        navigate(getWorkspacePath(destination), { replace: true, scroll: false });
+      }
     } else if (currentPathname.startsWith("/auth/")) {
-      navigate(getWorkspacePath("overview"), { replace: true, scroll: false });
+      const destination = selectedSubscriptionPlanId ? "subscriptions" : "overview";
+      setActiveView(destination);
+      navigate(getWorkspacePath(destination), { replace: true, scroll: false });
     }
-  }, [navigate, path, session]);
+  }, [navigate, path, selectedSubscriptionPlanId, session]);
 
   useEffect(() => {
     let cancelled = false;
@@ -791,7 +881,9 @@ export default function App() {
 
         const currentPathname = getAppPathname(path).toLowerCase();
         if (currentPathname.startsWith("/auth/")) {
-          navigate(getWorkspacePath("overview"), { replace: true, scroll: false });
+          const destination = loadPendingSubscriptionPlan() ? "subscriptions" : "overview";
+          setActiveView(destination);
+          navigate(getWorkspacePath(destination), { replace: true, scroll: false });
         }
       } catch (error) {
         persistSession(null);
@@ -885,7 +977,7 @@ export default function App() {
       closeQuoteRequestDetails();
       setProfilePreviewOpen(false);
       workspace.clearShipmentContext();
-      setActiveView("overview");
+      setActiveView(loadPendingSubscriptionPlan() ? "subscriptions" : "overview");
       navigate("/auth/login", { replace: true });
       pushToast("info", "Session expired", "Please sign in again to continue.");
     }
@@ -1129,10 +1221,12 @@ export default function App() {
 
     void (async () => {
       const pendingPayment = loadPendingCardPayment();
+      const isSubscriptionPayment = Boolean(pendingPayment?.subscriptionPlanId);
+      const destination: View = isSubscriptionPayment ? "subscriptions" : "finance";
       let transactionStatus: string | number | null = null;
 
       setBusy(true);
-      setActiveView("finance");
+      setActiveView(destination);
       setWorkflowInvoice(null);
       setShipmentWorkflowStep(null);
 
@@ -1182,11 +1276,16 @@ export default function App() {
         }
 
         await loadData();
+        if (isSubscriptionPayment) await loadUserSubscriptionData();
 
         if (cancelled) return;
 
-        const toast = getPaymentReturnToast(paymentReturn, transactionStatus);
+        const toast = getPaymentReturnToast(paymentReturn, transactionStatus, isSubscriptionPayment ? "subscription" : "invoice");
         pushToast(toast.type, toast.title, toast.message);
+        if (isSubscriptionPayment && isPaymentReturnSuccess(paymentReturn, transactionStatus)) {
+          clearPendingSubscriptionPlan();
+          setSelectedSubscriptionPlanId("");
+        }
       } catch (error) {
         if (isBackendUnavailableError(error)) {
           shouldKeepCurrentPath = true;
@@ -1195,14 +1294,21 @@ export default function App() {
         }
 
         if (!cancelled) {
-          pushToast("info", "Payment response received", "We could not refresh the payment status yet. Open finance again in a moment.");
+          pushToast(
+            "info",
+            "Payment response received",
+            isSubscriptionPayment
+              ? "We could not refresh the subscription status yet. Open subscriptions again in a moment."
+              : "We could not refresh the payment status yet. Open finance again in a moment."
+          );
         }
       } finally {
         if (!cancelled) {
           clearPendingCardPayment();
           setOnlinePaymentInvoiceId(null);
+          setOnlinePaymentSubscriptionPlanId(null);
           setBusy(false);
-          if (!shouldKeepCurrentPath) navigate(getWorkspacePath("finance"), { replace: true, scroll: false });
+          if (!shouldKeepCurrentPath) navigate(getWorkspacePath(destination), { replace: true, scroll: false });
         }
       }
     })();
@@ -1213,6 +1319,7 @@ export default function App() {
   }, [
     handleBackendUnavailable,
     loadData,
+    loadUserSubscriptionData,
     navigate,
     path,
     pushToast,
@@ -1595,6 +1702,7 @@ export default function App() {
       }
 
       const nextSession = await resolveAuthenticatedSession(response);
+      const destination: View = selectedSubscriptionPlanId ? "subscriptions" : "overview";
       loadSequenceRef.current += 1;
       setData(initialData);
       setProfile(null);
@@ -1602,18 +1710,21 @@ export default function App() {
       setInvoicesResolvedShipmentId("");
       setWorkflowInvoice(null);
       setOnlinePaymentInvoiceId(null);
+      setOnlinePaymentSubscriptionPlanId(null);
+      setUserSubscriptions([]);
+      setCurrentSubscriptions([]);
       setShipmentWorkflowStep(null);
       setItemUpdateReturnStep(null);
       closeQuoteRequestDetails();
       setProfilePreviewOpen(false);
       workspace.clearShipmentContext();
-      setActiveView("overview");
+      setActiveView(destination);
       showPageLoading(650);
       setSession(nextSession);
       persistSession(nextSession);
       clearRegistrationVerification();
       void api.prepareCsrfToken(true);
-      navigate(getWorkspacePath("overview"), { replace: true });
+      navigate(getWorkspacePath(destination), { replace: true });
       pushToast("success", "Signed in", `Welcome back${nextSession.userName ? `, ${nextSession.userName}` : ""}.`);
     } catch (loginError) {
       if (isBackendUnavailableError(loginError)) {
@@ -1816,6 +1927,10 @@ export default function App() {
     setInvoices([]);
     setWorkflowInvoice(null);
     setOnlinePaymentInvoiceId(null);
+    setOnlinePaymentSubscriptionPlanId(null);
+    setUserSubscriptions([]);
+    setCurrentSubscriptions([]);
+    setSelectedSubscriptionPlanId(loadPendingSubscriptionPlan());
     setShipmentWorkflowStep(null);
     setItemUpdateReturnStep(null);
     closeQuoteRequestDetails();
@@ -2658,7 +2773,8 @@ export default function App() {
 
     try {
       const payment = await api.startPayment(session.accessToken, {
-        invoiceId: invoice.id
+        invoiceId: invoice.id,
+        subscriptionPlanId: null
       });
       const checkout = await api.checkoutPayment(session.accessToken, payment.paymentTransactionId);
       const checkoutUrl = resolveCheckoutPaymentUrl(checkout) || resolvePaymentCheckoutUrl(payment);
@@ -2686,6 +2802,51 @@ export default function App() {
       }
 
       pushToast("error", "Card checkout failed", getFriendlyErrorMessage(error));
+    }
+  }
+
+  function handleSelectSubscriptionPlan(planId: string) {
+    setSelectedSubscriptionPlanId(planId);
+    savePendingSubscriptionPlan(planId);
+  }
+
+  async function handleStartSubscriptionPayment(plan: SubscriptionPlan) {
+    if (!session?.accessToken) return;
+
+    handleSelectSubscriptionPlan(plan.id);
+    setBusy(true);
+    setOnlinePaymentSubscriptionPlanId(plan.id);
+
+    try {
+      const payment = await api.startPayment(session.accessToken, {
+        invoiceId: null,
+        subscriptionPlanId: plan.id
+      });
+      const checkout = await api.checkoutPayment(session.accessToken, payment.paymentTransactionId);
+      const checkoutUrl = resolveCheckoutPaymentUrl(checkout) || resolvePaymentCheckoutUrl(payment);
+
+      if (!checkoutUrl) {
+        throw new Error("The subscription checkout link was not returned by the server.");
+      }
+
+      savePendingCardPayment({
+        transactionId: payment.paymentTransactionId,
+        subscriptionPlanId: plan.id,
+        createdAt: new Date().toISOString()
+      });
+
+      window.location.assign(checkoutUrl);
+    } catch (error) {
+      clearPendingCardPayment();
+      setOnlinePaymentSubscriptionPlanId(null);
+      setBusy(false);
+
+      if (isBackendUnavailableError(error)) {
+        handleBackendUnavailable();
+        return;
+      }
+
+      pushToast("error", "Subscription checkout failed", getFriendlyErrorMessage(error));
     }
   }
 
@@ -3052,7 +3213,7 @@ export default function App() {
           dateOfBirth: customerDraft.dateOfBirth || undefined
         };
 
-    await runMutation(existingCustomer ? "Customer profile updated" : "Customer profile created", async () => {
+    const savedCustomer = await runMutation(existingCustomer ? "Customer profile updated" : "Customer profile created", async () => {
       const customer = existingCustomer
         ? await api.updateCustomer(session.accessToken, payload)
         : await api.createCustomer(session.accessToken, payload);
@@ -3060,6 +3221,10 @@ export default function App() {
       setProfile((current) => (current ? { ...current, customer } : current));
       return customer;
     });
+
+    if (savedCustomer && !existingCustomer && activeView === "subscriptions" && selectedSubscriptionPlan) {
+      await handleStartSubscriptionPayment(selectedSubscriptionPlan);
+    }
   }
 
   async function handleDeleteCustomer() {
@@ -3070,6 +3235,54 @@ export default function App() {
       setProfile((current) => (current ? { ...current, customer: undefined } : current));
       return result;
     }, { confirm: false });
+  }
+
+  async function handleCreateSubscriptionPlan(body: CreateSubscriptionPlanRequest) {
+    if (!session?.accessToken || !isPrivileged) return false;
+    const plan = await runMutation(
+      "Subscription plan created",
+      () => api.createSubscriptionPlan(session.accessToken, body),
+      { refresh: false }
+    );
+    if (plan) setSubscriptionPlans((current) => [plan, ...current.filter((item) => item.id !== plan.id)]);
+    return Boolean(plan);
+  }
+
+  async function handleUpdateSubscriptionPlan(id: string, body: UpdateSubscriptionPlanRequest) {
+    if (!session?.accessToken || !isPrivileged) return false;
+    const plan = await runMutation(
+      "Subscription plan updated",
+      () => api.updateSubscriptionPlan(session.accessToken, id, body),
+      { refresh: false }
+    );
+    if (plan) setSubscriptionPlans((current) => current.map((item) => (item.id === plan.id ? plan : item)));
+    return Boolean(plan);
+  }
+
+  function handleDeleteSubscriptionPlan(id: string) {
+    if (!session?.accessToken || !isPrivileged) return;
+    void (async () => {
+      const deleted = await runMutation(
+        "Subscription plan deleted",
+        () => api.deleteSubscriptionPlan(session.accessToken, id),
+        {
+          refresh: false,
+          confirm: {
+            title: "Delete subscription plan",
+            message: "This plan will be removed from the public and internal subscription lists.",
+            confirmLabel: "Delete",
+            tone: "danger"
+          }
+        }
+      );
+      if (deleted) {
+        setSubscriptionPlans((current) => current.filter((plan) => plan.id !== id));
+        if (selectedSubscriptionPlanId === id) {
+          setSelectedSubscriptionPlanId("");
+          clearPendingSubscriptionPlan();
+        }
+      }
+    })();
   }
 
   function handleCreateCarrier(body: { name: string; code: string }) {
@@ -3250,6 +3463,32 @@ export default function App() {
           onResetRateFilters={handleResetRateFilters}
           onLoadAnalytics={handleLoadAnalytics}
           onLoadRecommendations={handleLoadRecommendations}
+        />
+      );
+    }
+
+    if (activeView === "subscriptions") {
+      return (
+        <SubscriptionsPage
+          plans={subscriptionPlans}
+          subscriptions={userSubscriptions}
+          currentSubscriptions={currentSubscriptions}
+          selectedPlanId={selectedSubscriptionPlanId}
+          currentCustomer={currentCustomer}
+          customerDraft={customerDraft}
+          setCustomerDraft={setCustomerDraft}
+          isPrivileged={isPrivileged}
+          isUser={isUser}
+          busy={busy}
+          loading={subscriptionPlansLoading}
+          language={language}
+          paymentPlanId={onlinePaymentSubscriptionPlanId}
+          onSelectPlan={handleSelectSubscriptionPlan}
+          onStartPayment={(plan) => void handleStartSubscriptionPayment(plan)}
+          onSaveCustomer={handleSaveCustomer}
+          onCreatePlan={handleCreateSubscriptionPlan}
+          onUpdatePlan={handleUpdateSubscriptionPlan}
+          onDeletePlan={handleDeleteSubscriptionPlan}
         />
       );
     }
@@ -3549,6 +3788,7 @@ export default function App() {
             publicWorkflowCount={authMetrics.workflowStateCount}
             theme={theme}
             onToggleTheme={handleToggleTheme}
+            selectedPlan={selectedSubscriptionPlan}
             onBackToLanding={() => {
               clearRegistrationVerification();
               setAuthMode("login");
@@ -3560,6 +3800,14 @@ export default function App() {
             theme={theme}
             onToggleTheme={handleToggleTheme}
             serverUnavailable={serverUnavailable}
+            plans={subscriptionPlans}
+            plansLoading={subscriptionPlansLoading}
+            onSelectPlan={(planId) => {
+              if (serverUnavailable) return;
+              handleSelectSubscriptionPlan(planId);
+              setAuthMode("login");
+              navigate("/auth/login");
+            }}
             onSignIn={() => {
               if (serverUnavailable) return;
               setAuthMode("login");

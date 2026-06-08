@@ -7,7 +7,8 @@ const PENDING_CARD_PAYMENT_KEY = "flowtix:pending-card-payment";
 
 export type PendingCardPayment = {
   transactionId: string;
-  invoiceId: string;
+  invoiceId?: string;
+  subscriptionPlanId?: string;
   shipmentId?: string;
   createdAt: string;
 };
@@ -101,11 +102,7 @@ function normalizeCheckoutUrl(rawUrl: string) {
 }
 
 export function resolvePaymentCheckoutUrl(payment: StartPaymentResponse) {
-  const rawUrl = payment.checkoutUrl || payment.redirectUrl || payment.paymentUrl || payment.url || "";
-  const checkoutUrl = normalizeCheckoutUrl(rawUrl);
-  if (checkoutUrl) return checkoutUrl;
-
-  return payment.clientSecret ? buildPaymobCheckoutUrl(payment.clientSecret) : "";
+  return buildPaymobCheckoutUrl(payment.clientSecret);
 }
 
 export function resolveCheckoutPaymentUrl(checkout: CheckoutPaymentResponse) {
@@ -122,11 +119,12 @@ export function loadPendingCardPayment() {
 
   try {
     const parsed = JSON.parse(raw) as Partial<PendingCardPayment>;
-    if (!parsed.transactionId || !parsed.invoiceId) return null;
+    if (!parsed.transactionId || (!parsed.invoiceId && !parsed.subscriptionPlanId)) return null;
 
     return {
       transactionId: parsed.transactionId,
       invoiceId: parsed.invoiceId,
+      subscriptionPlanId: parsed.subscriptionPlanId,
       shipmentId: parsed.shipmentId,
       createdAt: parsed.createdAt || new Date().toISOString()
     } satisfies PendingCardPayment;
