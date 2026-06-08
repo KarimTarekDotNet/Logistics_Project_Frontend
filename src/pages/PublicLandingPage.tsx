@@ -73,6 +73,9 @@ export function PublicLandingPage(props: {
 }) {
   const [activeSection, setActiveSection] = useState("platform");
   const currentYear = new Date().getFullYear();
+  const activePlans = props.plans
+    .filter((plan) => plan.isActive)
+    .sort((first, second) => first.price - second.price || first.title.localeCompare(second.title));
   const authDisabled = Boolean(props.serverUnavailable);
 
   useEffect(() => {
@@ -298,11 +301,11 @@ export function PublicLandingPage(props: {
         </div>
         {props.plansLoading ? (
           <div className="landing-plan-loading">Loading subscription plans...</div>
-        ) : props.plans.filter((plan) => plan.isActive).length === 0 ? (
+        ) : activePlans.length === 0 ? (
           <div className="landing-plan-empty">Subscription plans will be available soon.</div>
         ) : (
-          <div className="landing-plan-grid">
-            {props.plans.filter((plan) => plan.isActive).map((plan) => (
+          <div className="landing-plan-grid price-ordered-grid">
+            {activePlans.map((plan) => (
               <article className="landing-plan-card" key={plan.id}>
                 <Crown size={22} />
                 <h3>{plan.title}</h3>

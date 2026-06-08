@@ -64,6 +64,10 @@ function planToDraft(plan: SubscriptionPlan): PlanDraft {
   };
 }
 
+function sortPlansByPrice(plans: SubscriptionPlan[]) {
+  return [...plans].sort((first, second) => first.price - second.price || first.title.localeCompare(second.title));
+}
+
 export function SubscriptionsPage(props: {
   plans: SubscriptionPlan[];
   subscriptions: UserSubscription[];
@@ -94,6 +98,7 @@ export function SubscriptionsPage(props: {
   const activeTitles = new Set(
     props.currentSubscriptions.filter((subscription) => subscription.isActive).map((subscription) => subscription.subscriptionPlanTitle.toLowerCase())
   );
+  const sortedPlans = sortPlansByPrice(props.plans);
 
   useEffect(() => {
     if (!props.selectedPlanId) return;
@@ -126,7 +131,7 @@ export function SubscriptionsPage(props: {
 
   if (props.isUser && !props.currentCustomer) {
     return (
-      <div className="subscriptions-page">
+      <div className="view-stack subscriptions-page">
         <SectionHeader icon={<Crown size={22} />} title="Complete your subscription" meta="Customer setup">
           {selectedPlan && <StatusBadge status={selectedPlan.title} />}
         </SectionHeader>
@@ -236,7 +241,7 @@ export function SubscriptionsPage(props: {
   }
 
   return (
-    <div className="subscriptions-page">
+    <div className="view-stack subscriptions-page">
       <SectionHeader
         icon={<Crown size={22} />}
         title={props.isPrivileged ? "Subscription plans" : "Subscriptions"}
@@ -259,7 +264,7 @@ export function SubscriptionsPage(props: {
       )}
 
       {props.isPrivileged && (
-        <section className="panel">
+        <section className="panel subscription-plan-create-panel">
           <PanelTitle icon={<Plus size={18} />} title="Create plan" />
           <form className="subscription-plan-form" onSubmit={submitCreate} noValidate>
             <Field label="Title" error={createErrors.title}>
@@ -320,15 +325,15 @@ export function SubscriptionsPage(props: {
         </section>
       )}
 
-      <section className="panel">
+      <section className="panel subscription-plans-panel">
         <PanelTitle icon={<Crown size={18} />} title={props.isPrivileged ? "Manage plans" : "Available plans"} />
         {props.loading ? (
           <LoadingSpinner label="Loading subscriptions" />
         ) : props.plans.length === 0 ? (
           <EmptyState icon={<Crown size={28} />} title="No subscription plans" description="There are no plans available yet." />
         ) : (
-          <div className="subscription-plan-grid">
-            {props.plans.map((plan) => {
+          <div className="subscription-plan-grid price-ordered-grid">
+            {sortedPlans.map((plan) => {
               const isSelected = plan.id === props.selectedPlanId;
               const isCurrent = activeTitles.has(plan.title.toLowerCase());
               const isEditing = editingPlanId === plan.id;
@@ -449,7 +454,7 @@ export function SubscriptionsPage(props: {
       </section>
 
       {!props.isPrivileged && props.subscriptions.length > 0 && (
-        <section className="panel">
+        <section className="panel subscription-history-panel">
           <PanelTitle icon={<Crown size={18} />} title="Subscription history" meta={`${props.subscriptions.length} records`} />
           <div className="table-wrap">
             <table>
@@ -464,10 +469,10 @@ export function SubscriptionsPage(props: {
               <tbody>
                 {props.subscriptions.map((subscription) => (
                   <tr key={subscription.id}>
-                    <td>{subscription.subscriptionPlanTitle}</td>
-                    <td>{formatShortDate(subscription.startDate)}</td>
-                    <td>{formatShortDate(subscription.endDate)}</td>
-                    <td><StatusBadge status={subscription.isActive ? "Active" : "Expired"} /></td>
+                    <td data-label="Plan">{subscription.subscriptionPlanTitle}</td>
+                    <td data-label="Started">{formatShortDate(subscription.startDate)}</td>
+                    <td data-label="Ends">{formatShortDate(subscription.endDate)}</td>
+                    <td data-label="Status"><StatusBadge status={subscription.isActive ? "Active" : "Expired"} /></td>
                   </tr>
                 ))}
               </tbody>
