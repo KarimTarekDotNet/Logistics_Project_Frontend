@@ -479,6 +479,7 @@ select:-webkit-autofill {
   padding: 0 28px;
   gap: 16px;
   background: rgba(5, 20, 36, 0.88);
+  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-subtle);
   z-index: 30;

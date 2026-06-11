@@ -8,6 +8,9 @@ import {
   buildShipmentItemPayload,
   canModifyShipmentItems,
   emptyShipmentItemDraft,
+  getCargoCapacityError,
+  getCargoCapacityLimits,
+  getCargoTotalsCapacityError,
   getUnbilledShipmentItems,
   shipmentItemToDraft
 } from "./features/shipments/shipmentItems";
@@ -66,7 +69,14 @@ import type {
 import { getErrorMessage, getFriendlyErrorMessage, isBackendUnavailableError, isNotFoundError, safe } from "./utils/errors";
 import { getLocalDateTime, isoToLocalDateTime, normalizeDateOnly, toIso } from "./utils/format";
 import { isValidId } from "./utils/ids";
-import { getAppPath, getAppPathname, getWorkspacePath, readWorkspaceRoute, toBrowserPath } from "./utils/navigation";
+import {
+  getAppPath,
+  getAppPathname,
+  getShipmentWorkflowPath,
+  getWorkspacePath,
+  readWorkspaceRoute,
+  toBrowserPath
+} from "./utils/navigation";
 import {
   clearPendingCardPayment,
   isPaymentReturnPath,
@@ -438,7 +448,9 @@ export default function App() {
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [invoicesResolvedShipmentId, setInvoicesResolvedShipmentId] = useState("");
-  const [shipmentWorkflowStep, setShipmentWorkflowStep] = useState<ShipmentWorkflowStep | null>(null);
+  const [shipmentWorkflowStep, setShipmentWorkflowStep] = useState<ShipmentWorkflowStep | null>(
+    () => workspaceRoute?.shipmentWorkflowStep ?? null
+  );
   const [workflowInvoice, setWorkflowInvoice] = useState<Invoice | null>(null);
   const [onlinePaymentInvoiceId, setOnlinePaymentInvoiceId] = useState<string | null>(null);
   const [onlinePaymentSubscriptionPlanId, setOnlinePaymentSubscriptionPlanId] = useState<string | null>(null);
@@ -532,6 +544,7 @@ export default function App() {
   const { toasts, dismissToast, pushToast } = useToasts();
   const workspace = useShipmentWorkspace(session, setData);
   const loadSequenceRef = useRef(0);
+  const mutationInFlightRef = useRef(false);
   const pageLoadingTimerRef = useRef<number | null>(null);
   const completedConfirmationLinksRef = useRef<Set<string>>(new Set());
   const confirmationRequestsRef = useRef<Map<string, Promise<ConfirmationRequestResult>>>(new Map());
@@ -550,7 +563,13 @@ export default function App() {
       }
     }
     setPath(getAppPath());
-    if (options.scroll !== false) window.scrollTo({ top: 0, behavior: "smooth" });
+    if (options.scroll !== false) {
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      } catch {
+        window.scrollTo(0, 0);
+      }
+    }
   }, []);
 
   const showPageLoading = useCallback((duration = 520) => {
@@ -576,6 +595,20 @@ export default function App() {
       setQuoteRequestDetailError(null);
       setSelectedPricingRate(null);
       navigate(getWorkspacePath(view, accountSection), { scroll: false });
+    },
+    [activeView, navigate, showPageLoading]
+  );
+
+  const openShipmentWorkflow = useCallback(
+    (step: ShipmentWorkflowStep | null) => {
+      if (activeView !== "shipments") showPageLoading();
+      setActiveView("shipments");
+      setShipmentWorkflowStep(step);
+      setQuoteRequestDetailId(null);
+      setQuoteRequestDetail(null);
+      setQuoteRequestDetailError(null);
+      setSelectedPricingRate(null);
+      navigate(getShipmentWorkflowPath(step), { scroll: false });
     },
     [activeView, navigate, showPageLoading]
   );
@@ -609,6 +642,13 @@ export default function App() {
     : data.quotes.length > 0
       ? data.quotes
       : currentCustomer?.quotes ?? [];
+  const selectedShipmentQuote = selectedShipment
+    ? shipmentQuoteOptions.find((quote) => quote.id === selectedShipment.quoteId)
+    : undefined;
+  const selectedShipmentRate = selectedShipmentQuote
+    ? data.rates.find((rate) => rate.id === selectedShipmentQuote.rateId)
+    : undefined;
+  const cargoCapacityLimits = getCargoCapacityLimits(selectedShipmentQuote, selectedShipmentRate);
 
   const handleBackendUnavailable = useCallback(
     (showToast = true) => {
@@ -841,6 +881,7 @@ export default function App() {
     const route = readWorkspaceRoute(path);
     if (route) {
       setActiveView(route.view);
+      setShipmentWorkflowStep(route.view === "shipments" ? route.shipmentWorkflowStep : null);
       return;
     }
 
@@ -1187,6 +1228,14 @@ export default function App() {
         if (!cancelled) {
           setInvoices(nextInvoices);
           setInvoicesResolvedShipmentId(selectedShipmentId);
+          if (shipmentWorkflowStep === "invoice") {
+            setWorkflowInvoice(
+              (current) =>
+                current ??
+                nextInvoices.find((invoice) => String(invoice.paymentStatus).toLowerCase() === "draft") ??
+                null
+            );
+          }
         }
       } catch (error) {
         if (!cancelled && isBackendUnavailableError(error)) {
@@ -1381,21 +1430,26 @@ export default function App() {
       confirm?: boolean | ActionConfirmationOptions;
     } = {}
   ): Promise<T | null> {
-    if (options.confirm !== false) {
-      const dangerousAction = /(delete|cancel|reject|revoke|refund|logout)/i.test(label);
-      const confirmationOptions = typeof options.confirm === "object" ? options.confirm : {};
-      const confirmed = await requestActionConfirmation({
-        title: confirmationOptions.title ?? "Confirm action",
-        message: confirmationOptions.message ?? "This request will be sent to the server and update live workspace data.",
-        confirmLabel: confirmationOptions.confirmLabel ?? "OK",
-        tone: confirmationOptions.tone ?? (dangerousAction ? "danger" : "default")
-      });
+    if (mutationInFlightRef.current) return null;
+    mutationInFlightRef.current = true;
 
-      if (!confirmed) return null;
-    }
-
-    setBusy(true);
+    let mutationStarted = false;
     try {
+      if (options.confirm !== false) {
+        const dangerousAction = /(delete|cancel|reject|revoke|refund|logout)/i.test(label);
+        const confirmationOptions = typeof options.confirm === "object" ? options.confirm : {};
+        const confirmed = await requestActionConfirmation({
+          title: confirmationOptions.title ?? "Confirm action",
+          message: confirmationOptions.message ?? "This request will be sent to the server and update live workspace data.",
+          confirmLabel: confirmationOptions.confirmLabel ?? "OK",
+          tone: confirmationOptions.tone ?? (dangerousAction ? "danger" : "default")
+        });
+
+        if (!confirmed) return null;
+      }
+
+      mutationStarted = true;
+      setBusy(true);
       const result = await mutation();
       setServerUnavailable(false);
       if (options.successToast !== false) {
@@ -1414,7 +1468,8 @@ export default function App() {
       pushToast("error", options.failureTitle ?? `${label} failed`, getFriendlyErrorMessage(mutationError));
       return null;
     } finally {
-      setBusy(false);
+      if (mutationStarted) setBusy(false);
+      mutationInFlightRef.current = false;
     }
   }
 
@@ -2451,6 +2506,17 @@ export default function App() {
     }
 
     const payload = builtItem.payload;
+    const capacityError = getCargoCapacityError(
+      payload,
+      selectedShipmentItems,
+      cargoCapacityLimits,
+      editingItemId
+    );
+    if (capacityError) {
+      pushToast("error", "Cargo capacity exceeded", capacityError);
+      return;
+    }
+
     const result = editingItemId
       ? await runMutation("Cargo item updated", () => api.updateShipmentItem(session.accessToken, editingItemId, payload))
       : await runMutation("Cargo item added", () => api.createShipmentItem(session.accessToken, payload));
@@ -2459,7 +2525,7 @@ export default function App() {
       setLastItemDraft(submittedDraft);
       setItemDraft(initialShipmentItemDraft);
       setEditingItemId(null);
-      selectWorkspaceView("shipments");
+      openShipmentWorkflow(null);
       pushToast(
         "info",
         editingItemId ? "Cargo item saved" : "Cargo item added",
@@ -2503,12 +2569,17 @@ export default function App() {
       return;
     }
 
+    const capacityError = getCargoTotalsCapacityError(selectedShipmentItems, cargoCapacityLimits);
+    if (capacityError) {
+      pushToast("error", "Cargo capacity exceeded", capacityError);
+      return;
+    }
+
     setEditingItemId(null);
     setItemDraft(initialShipmentItemDraft);
     setItemUpdateReturnStep(null);
     setWorkflowInvoice(null);
-    setShipmentWorkflowStep("charges");
-    selectWorkspaceView("shipments");
+    openShipmentWorkflow("charges");
     pushToast("success", "Cargo confirmed", "Move on to charge generation when you are ready.");
   }
 
@@ -2518,9 +2589,8 @@ export default function App() {
 
     if (!itemUpdateReturnStep) return;
 
-    setShipmentWorkflowStep(itemUpdateReturnStep);
+    openShipmentWorkflow(itemUpdateReturnStep);
     setItemUpdateReturnStep(null);
-    selectWorkspaceView("shipments");
   }
 
   async function loadInvoices() {
@@ -2619,7 +2689,7 @@ export default function App() {
 
     setWorkflowInvoice(draftInvoice);
     setInvoices((current) => [draftInvoice, ...current.filter((invoice) => invoice.id !== draftInvoice.id)]);
-    setShipmentWorkflowStep("invoice");
+    openShipmentWorkflow("invoice");
     pushToast(
       "success",
       "Invoice ready",
@@ -2629,10 +2699,9 @@ export default function App() {
 
   function handleUpdateItemsFromInvoice() {
     setItemUpdateReturnStep(shipmentWorkflowStep ?? "charges");
-    setShipmentWorkflowStep(null);
     setEditingItemId(null);
     setItemDraft(lastItemDraft);
-    selectWorkspaceView("shipments");
+    openShipmentWorkflow(null);
     if (selectedShipment) void workspace.loadShipmentRelated(selectedShipment.id);
   }
 
@@ -2690,8 +2759,7 @@ export default function App() {
 
       if (reviewInvoice) {
         setWorkflowInvoice(reviewInvoice);
-        setShipmentWorkflowStep("invoice");
-        selectWorkspaceView("shipments");
+        openShipmentWorkflow("invoice");
         pushToast("info", "Invoice restored", "The latest invoice for this shipment is open for review.");
         return true;
       }
@@ -2706,8 +2774,7 @@ export default function App() {
 
       if (requestedStep === "charges" || nextWorkflowCharges.length > 0 || nextItems.length > 0 || restoredShipment.items?.length) {
         setWorkflowInvoice(null);
-        setShipmentWorkflowStep("charges");
-        selectWorkspaceView("shipments");
+        openShipmentWorkflow("charges");
         pushToast("info", "Charge step restored", "Continue by generating charges for the saved cargo items.");
         return true;
       }
@@ -3636,6 +3703,7 @@ export default function App() {
           onUpdateTracking={handleUpdateTracking}
           onDeleteShipment={handleDeleteShipment}
           shipmentItems={workspace.shipmentItems}
+          cargoCapacityLimits={cargoCapacityLimits}
           editableItemIds={editableShipmentItemIds}
           itemDraft={itemDraft}
           setItemDraft={setItemDraft}

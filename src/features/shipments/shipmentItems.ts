@@ -1,6 +1,19 @@
-import type { Invoice, ShipmentItem, ShipmentItemDraft } from "../../types";
+import type { Invoice, Quote, Rate, ShipmentItem, ShipmentItemDraft } from "../../types";
 
 const CBM_TO_KG_FACTOR = 167;
+const CAPACITY_TOLERANCE = 0.001;
+
+export type CargoCapacityLimits = {
+  grossWeightKg: number | null;
+  netWeightKg: number | null;
+  volumeCbm: number | null;
+};
+
+export type CargoCapacityTotals = {
+  grossWeightKg: number;
+  netWeightKg: number;
+  volumeCbm: number;
+};
 
 const itemLockedStatuses = new Set([
   "ShippingInstructionsSubmitted",
@@ -77,6 +90,90 @@ export function canModifyShipmentItems(status?: string) {
 
 export function estimateChargeableWeight(grossWeightKg: number, volumeCbm: number) {
   return Math.max(grossWeightKg, volumeCbm * CBM_TO_KG_FACTOR);
+}
+
+function positiveLimit(...values: Array<number | null | undefined>) {
+  const limits = values.filter((value): value is number => Number.isFinite(value) && Number(value) > 0);
+  return limits.length > 0 ? Math.min(...limits) : null;
+}
+
+export function getCargoCapacityLimits(quote?: Quote, rate?: Rate): CargoCapacityLimits {
+  return {
+    grossWeightKg: positiveLimit(quote?.requestedGrossWeightKg, rate?.maxGrossWeightKg),
+    netWeightKg: positiveLimit(quote?.requestedNetWeightKg, rate?.maxNetWeightKg),
+    volumeCbm: positiveLimit(quote?.requestedVolumeCbm, rate?.maxVolumeCbm)
+  };
+}
+
+export function getCargoCapacityTotals(items: ShipmentItem[], excludedItemId?: string | null): CargoCapacityTotals {
+  return items.reduce(
+    (totals, item) => {
+      if (excludedItemId && item.id === excludedItemId) return totals;
+      return {
+        grossWeightKg: totals.grossWeightKg + item.grossWeight,
+        netWeightKg: totals.netWeightKg + item.netWeight,
+        volumeCbm: totals.volumeCbm + item.volumeCbm
+      };
+    },
+    { grossWeightKg: 0, netWeightKg: 0, volumeCbm: 0 }
+  );
+}
+
+export function getCargoCapacityError(
+  item: Pick<ShipmentItem, "grossWeight" | "netWeight" | "volumeCbm">,
+  existingItems: ShipmentItem[],
+  limits: CargoCapacityLimits,
+  excludedItemId?: string | null
+) {
+  const current = getCargoCapacityTotals(existingItems, excludedItemId);
+  const checks = [
+    {
+      label: "gross weight",
+      unit: "kg",
+      addition: item.grossWeight,
+      next: current.grossWeightKg + item.grossWeight,
+      limit: limits.grossWeightKg
+    },
+    {
+      label: "net weight",
+      unit: "kg",
+      addition: item.netWeight,
+      next: current.netWeightKg + item.netWeight,
+      limit: limits.netWeightKg
+    },
+    {
+      label: "volume",
+      unit: "CBM",
+      addition: item.volumeCbm,
+      next: current.volumeCbm + item.volumeCbm,
+      limit: limits.volumeCbm
+    }
+  ];
+
+  for (const check of checks) {
+    if (check.limit != null && check.next - check.limit > CAPACITY_TOLERANCE) {
+      const remaining = Math.max(0, check.limit - (check.next - check.addition));
+      return `This item exceeds the allowed ${check.label}. Remaining capacity is ${remaining.toFixed(2)} ${check.unit}.`;
+    }
+  }
+
+  return null;
+}
+
+export function getCargoTotalsCapacityError(items: ShipmentItem[], limits: CargoCapacityLimits) {
+  const totals = getCargoCapacityTotals(items);
+  const checks = [
+    { label: "gross weight", unit: "kg", total: totals.grossWeightKg, limit: limits.grossWeightKg },
+    { label: "net weight", unit: "kg", total: totals.netWeightKg, limit: limits.netWeightKg },
+    { label: "volume", unit: "CBM", total: totals.volumeCbm, limit: limits.volumeCbm }
+  ];
+
+  const exceeded = checks.find(
+    (check) => check.limit != null && check.total - check.limit > CAPACITY_TOLERANCE
+  );
+  return exceeded
+    ? `Cargo ${exceeded.label} is ${exceeded.total.toFixed(2)} ${exceeded.unit}, above the allowed ${exceeded.limit?.toFixed(2)} ${exceeded.unit}.`
+    : null;
 }
 
 function readDraftNumber(value: string) {

@@ -22,7 +22,12 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ConfirmDialog, EmptyState, Field, PanelTitle, SectionHeader, StatusBadge } from "../components/ui";
 import type { Quote, Shipment, ShipmentHistory, ShipmentItem, ShipmentItemDraft, TimelineItem, TrackingDraft } from "../types";
 import { ShipmentContextPanel } from "../features/shipments/ShipmentContextPanel";
-import { canModifyShipmentItems, estimateChargeableWeight } from "../features/shipments/shipmentItems";
+import {
+  canModifyShipmentItems,
+  estimateChargeableWeight,
+  getCargoCapacityTotals,
+  type CargoCapacityLimits
+} from "../features/shipments/shipmentItems";
 import { formatDate, formatMoney } from "../utils/format";
 import { includesSearch } from "../utils/search";
 
@@ -103,6 +108,7 @@ export function ShipmentsPage(props: {
   onUpdateTracking: (event: FormEvent) => void;
   onDeleteShipment: (id: string) => void;
   shipmentItems: ShipmentItem[];
+  cargoCapacityLimits: CargoCapacityLimits;
   editableItemIds: ReadonlySet<string>;
   itemDraft: ShipmentItemDraft;
   setItemDraft: (draft: ShipmentItemDraft) => void;
@@ -142,6 +148,7 @@ export function ShipmentsPage(props: {
     onUpdateTracking,
     onDeleteShipment,
     shipmentItems,
+    cargoCapacityLimits,
     editableItemIds,
     itemDraft,
     setItemDraft,
@@ -181,10 +188,11 @@ export function ShipmentsPage(props: {
           quantity: totals.quantity + item.quantity,
           chargeableWeight: totals.chargeableWeight + item.chargeableWeight,
           grossWeight: totals.grossWeight + item.grossWeight,
+          netWeight: totals.netWeight + item.netWeight,
           volumeCbm: totals.volumeCbm + item.volumeCbm,
           hazardous: totals.hazardous + (item.isHazardous ? 1 : 0)
         }),
-        { quantity: 0, chargeableWeight: 0, grossWeight: 0, volumeCbm: 0, hazardous: 0 }
+        { quantity: 0, chargeableWeight: 0, grossWeight: 0, netWeight: 0, volumeCbm: 0, hazardous: 0 }
       ),
     [shipmentItems]
   );
@@ -434,8 +442,8 @@ export function ShipmentsPage(props: {
 
               {isPrivileged && (
                 <div className="operations-block">
-                  <Field label="Reason">
-                    <input value={actionReason} onChange={(event) => setActionReason(event.target.value.slice(0, 300))} placeholder="Required for hold/cancel and useful for audits" maxLength={300} />
+                  <Field label="Action reason" hint="Required for hold or cancellation and saved in the audit history.">
+                    <input value={actionReason} onChange={(event) => setActionReason(event.target.value.slice(0, 300))} placeholder="Explain why this shipment action is needed" maxLength={300} />
                   </Field>
                   <div className="button-row">
                     {actions.map((action) => {
@@ -455,28 +463,28 @@ export function ShipmentsPage(props: {
                 <form className="tracking-form" onSubmit={onUpdateTracking}>
                   <PanelTitle icon={<Clock3 size={18} />} title="Tracking" />
                   <div className="form-grid">
-                    <Field label="Booking">
+                    <Field label="Booking number" hint="Carrier booking reference.">
                       <input value={trackingDraft.bookingNumber} onChange={(event) => setTrackingDraft({ ...trackingDraft, bookingNumber: event.target.value.slice(0, 100) })} maxLength={100} />
                     </Field>
-                    <Field label="Vessel">
+                    <Field label="Vessel name">
                       <input value={trackingDraft.vesselName} onChange={(event) => setTrackingDraft({ ...trackingDraft, vesselName: event.target.value.slice(0, 200) })} maxLength={200} />
                     </Field>
-                    <Field label="Voyage">
+                    <Field label="Voyage number">
                       <input value={trackingDraft.voyageNumber} onChange={(event) => setTrackingDraft({ ...trackingDraft, voyageNumber: event.target.value.slice(0, 100) })} maxLength={100} />
                     </Field>
-                    <Field label="Checkpoint">
+                    <Field label="Current checkpoint" hint="Latest known location or operational milestone.">
                       <input value={trackingDraft.currentCheckpoint} onChange={(event) => setTrackingDraft({ ...trackingDraft, currentCheckpoint: event.target.value.slice(0, 250) })} maxLength={250} />
                     </Field>
-                    <Field label="ETD">
+                    <Field label="Estimated departure (ETD)">
                       <input type="datetime-local" value={trackingDraft.estimatedDeparture} onChange={(event) => setTrackingDraft({ ...trackingDraft, estimatedDeparture: event.target.value })} />
                     </Field>
-                    <Field label="ETA">
+                    <Field label="Estimated arrival (ETA)">
                       <input type="datetime-local" value={trackingDraft.estimatedArrival} onChange={(event) => setTrackingDraft({ ...trackingDraft, estimatedArrival: event.target.value })} />
                     </Field>
-                    <Field label="ATD">
+                    <Field label="Actual departure (ATD)">
                       <input type="datetime-local" value={trackingDraft.actualDeparture} onChange={(event) => setTrackingDraft({ ...trackingDraft, actualDeparture: event.target.value })} />
                     </Field>
-                    <Field label="ATA">
+                    <Field label="Actual arrival (ATA)">
                       <input type="datetime-local" value={trackingDraft.actualArrival} onChange={(event) => setTrackingDraft({ ...trackingDraft, actualArrival: event.target.value })} />
                     </Field>
                   </div>
@@ -525,6 +533,7 @@ export function ShipmentsPage(props: {
 
               <CargoItems
                 shipmentItems={shipmentItems}
+                cargoCapacityLimits={cargoCapacityLimits}
                 editableItemIds={editableItemIds}
                 itemDraft={itemDraft}
                 setItemDraft={setItemDraft}
@@ -586,10 +595,11 @@ export function ShipmentsPage(props: {
 
 function CargoItems(props: {
   shipmentItems: ShipmentItem[];
+  cargoCapacityLimits: CargoCapacityLimits;
   editableItemIds: ReadonlySet<string>;
   itemDraft: ShipmentItemDraft;
   setItemDraft: (draft: ShipmentItemDraft) => void;
-  itemTotals: { quantity: number; chargeableWeight: number; grossWeight: number; volumeCbm: number; hazardous: number };
+  itemTotals: { quantity: number; chargeableWeight: number; grossWeight: number; netWeight: number; volumeCbm: number; hazardous: number };
   canEditItems: boolean;
   isUser: boolean;
   busy: boolean;
@@ -606,6 +616,7 @@ function CargoItems(props: {
 }) {
   const {
     shipmentItems,
+    cargoCapacityLimits,
     editableItemIds,
     itemDraft,
     setItemDraft,
@@ -625,6 +636,7 @@ function CargoItems(props: {
     hasUnbilledItems
   } = props;
   const grossDraft = Number(itemDraft.grossWeight);
+  const netDraft = Number(itemDraft.netWeight);
   const volumeDraft = Number(itemDraft.volumeCbm);
   const estimatedChargeable =
     Number.isFinite(grossDraft) && Number.isFinite(volumeDraft)
@@ -634,6 +646,61 @@ function CargoItems(props: {
   const isUpdatingFromWorkflow = Boolean(itemUpdateReturnStep);
   const canConfirmItems = isUpdatingFromWorkflow || hasUnbilledItems;
   const returnLabel = itemUpdateReturnStep === "invoice" ? "invoice review" : "charge generation";
+  const currentCapacity = getCargoCapacityTotals(shipmentItems);
+  const capacityBeforeDraft = getCargoCapacityTotals(shipmentItems, editingItemId);
+  const capacityRows = [
+    {
+      key: "gross",
+      label: "Gross weight",
+      unit: "kg",
+      used: currentCapacity.grossWeightKg,
+      beforeDraft: capacityBeforeDraft.grossWeightKg,
+      draft: grossDraft,
+      limit: cargoCapacityLimits.grossWeightKg
+    },
+    {
+      key: "net",
+      label: "Net weight",
+      unit: "kg",
+      used: currentCapacity.netWeightKg,
+      beforeDraft: capacityBeforeDraft.netWeightKg,
+      draft: netDraft,
+      limit: cargoCapacityLimits.netWeightKg
+    },
+    {
+      key: "volume",
+      label: "Volume",
+      unit: "CBM",
+      used: currentCapacity.volumeCbm,
+      beforeDraft: capacityBeforeDraft.volumeCbm,
+      draft: volumeDraft,
+      limit: cargoCapacityLimits.volumeCbm
+    }
+  ];
+  const visibleCapacityRows = capacityRows.filter((row) => row.limit != null);
+  const draftCapacityErrors = Object.fromEntries(
+    capacityRows.map((row) => {
+      const remaining = row.limit == null ? null : Math.max(0, row.limit - row.beforeDraft);
+      const exceeds =
+        remaining != null &&
+        Number.isFinite(row.draft) &&
+        row.draft > remaining + 0.001;
+      return [
+        row.key,
+        exceeds ? `Only ${remaining.toFixed(2)} ${row.unit} remains for this item.` : ""
+      ];
+    })
+  );
+  const netWeightRelationshipError =
+    Number.isFinite(grossDraft) && Number.isFinite(netDraft) && netDraft > grossDraft
+      ? "Net weight cannot be greater than gross weight."
+      : "";
+  const hasDraftCapacityError =
+    Object.values(draftCapacityErrors).some(Boolean) || Boolean(netWeightRelationshipError);
+
+  function capacityPercent(used: number, limit: number) {
+    return limit > 0 ? Math.min(100, Math.max(0, (used / limit) * 100)) : 0;
+  }
 
   return (
     <div className="items-section">
@@ -644,49 +711,114 @@ function CargoItems(props: {
             <span>{itemTotals.quantity} pcs</span>
             <span>{itemTotals.chargeableWeight.toFixed(2)} kg chargeable</span>
             <span>{itemTotals.grossWeight.toFixed(2)} kg gross</span>
+            <span>{itemTotals.netWeight.toFixed(2)} kg net</span>
             <span>{itemTotals.volumeCbm.toFixed(2)} CBM</span>
             {itemTotals.hazardous > 0 && <span className="danger-text">{itemTotals.hazardous} hazardous</span>}
           </div>
         )}
       </div>
 
+      <section className="cargo-capacity-panel" aria-label="Cargo capacity">
+        <div className="cargo-capacity-heading">
+          <div>
+            <strong>Shipment cargo allowance</strong>
+            <small>Limits come from the accepted quote and its rate. Every saved item reduces the remaining allowance.</small>
+          </div>
+          {visibleCapacityRows.length > 0 && <span>{visibleCapacityRows.length} limits tracked</span>}
+        </div>
+        {visibleCapacityRows.length > 0 ? (
+          <div className="cargo-capacity-grid">
+            {visibleCapacityRows.map((row) => {
+              const limit = row.limit as number;
+              const remaining = Math.max(0, limit - row.used);
+              const percent = capacityPercent(row.used, limit);
+              const projectedUsed =
+                Number.isFinite(row.draft) && row.draft >= 0
+                  ? row.beforeDraft + row.draft
+                  : row.used;
+              const projectedRemaining = Math.max(0, limit - projectedUsed);
+              return (
+                <div className={`cargo-capacity-card ${row.used > limit ? "exceeded" : percent >= 85 ? "near-limit" : ""}`} key={row.key}>
+                  <div>
+                    <span>{row.label}</span>
+                    <strong>{remaining.toFixed(2)} {row.unit} remaining</strong>
+                  </div>
+                  <progress max={limit} value={Math.min(row.used, limit)} aria-label={`${row.label} used`} />
+                  <small>
+                    Used {row.used.toFixed(2)} of {limit.toFixed(2)} {row.unit}
+                  </small>
+                  {canEditItems && Math.abs(projectedUsed - row.used) > 0.001 && (
+                    <small className="cargo-capacity-preview">
+                      After save: {projectedRemaining.toFixed(2)} {row.unit} remaining
+                    </small>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="empty-hint">No weight or volume limit is available for this shipment quote.</p>
+        )}
+      </section>
+
       {canEditItems && (
         <form className="form-stack cargo-form" onSubmit={onSaveItem}>
-          <Field label="Description">
-            <input value={itemDraft.description} onChange={(event) => setItemDraft({ ...itemDraft, description: event.target.value })} placeholder="Electronics, furniture, spare parts" maxLength={250} required />
-          </Field>
-          <div className="form-grid">
-            <Field label="Qty">
-              <input type="number" min="1" step="1" value={itemDraft.quantity} onChange={(event) => setItemDraft({ ...itemDraft, quantity: event.target.value })} required />
+          <div className="cargo-form-section">
+            <div className="cargo-form-section-title">
+              <strong>1. Item details</strong>
+              <small>Describe what is being shipped and how many packages are included.</small>
+            </div>
+            <Field label="Cargo description" hint="Use a clear name that can also be understood on the invoice.">
+              <input value={itemDraft.description} onChange={(event) => setItemDraft({ ...itemDraft, description: event.target.value })} placeholder="Example: Electronic spare parts" maxLength={250} required />
             </Field>
-            <Field label="Vol (CBM)">
-              <input type="number" min="0" step="0.01" value={itemDraft.volumeCbm} onChange={(event) => setItemDraft({ ...itemDraft, volumeCbm: event.target.value })} required />
-            </Field>
-            <Field label="Gross (kg)">
-              <input type="number" min="0.01" step="0.01" value={itemDraft.grossWeight} onChange={(event) => setItemDraft({ ...itemDraft, grossWeight: event.target.value })} required />
-            </Field>
-            <Field label="Net (kg)">
-              <input type="number" min="0.01" step="0.01" value={itemDraft.netWeight} onChange={(event) => setItemDraft({ ...itemDraft, netWeight: event.target.value })} required />
-            </Field>
-            <Field label="Marks and numbers">
-              <input value={itemDraft.marksAndNumbers} maxLength={200} onChange={(event) => setItemDraft({ ...itemDraft, marksAndNumbers: event.target.value })} />
-            </Field>
-            <div className="readonly-metric">
-              <span>Chargeable kg</span>
-              <strong>{estimatedChargeable.toFixed(2)}</strong>
+            <div className="form-grid">
+              <Field label="Number of packages" hint="Whole packages in this cargo line.">
+                <input type="number" inputMode="numeric" min="1" step="1" value={itemDraft.quantity} onChange={(event) => setItemDraft({ ...itemDraft, quantity: event.target.value })} required />
+              </Field>
+              <Field label="Package marks / references" hint="Optional labels, serials, or handling references.">
+                <input value={itemDraft.marksAndNumbers} placeholder="Example: BX-001 to BX-010" maxLength={200} onChange={(event) => setItemDraft({ ...itemDraft, marksAndNumbers: event.target.value })} />
+              </Field>
             </div>
           </div>
+
+          <div className="cargo-form-section">
+            <div className="cargo-form-section-title">
+              <strong>2. Measurements</strong>
+              <small>Enter totals for this cargo line. The remaining shipment allowance updates after every save.</small>
+            </div>
+            <div className="form-grid">
+              <Field label="Total gross weight (kg)" hint="Cargo plus packaging." error={draftCapacityErrors.gross}>
+                <input type="number" inputMode="decimal" min="0.01" step="0.01" value={itemDraft.grossWeight} onChange={(event) => setItemDraft({ ...itemDraft, grossWeight: event.target.value })} required />
+              </Field>
+              <Field
+                label="Total net weight (kg)"
+                hint="Cargo only, without packaging."
+                error={draftCapacityErrors.net || netWeightRelationshipError}
+              >
+                <input type="number" inputMode="decimal" min="0.01" step="0.01" value={itemDraft.netWeight} onChange={(event) => setItemDraft({ ...itemDraft, netWeight: event.target.value })} required />
+              </Field>
+              <Field label="Total volume (CBM)" hint="Combined cubic volume for this cargo line." error={draftCapacityErrors.volume}>
+                <input type="number" inputMode="decimal" min="0" step="0.01" value={itemDraft.volumeCbm} onChange={(event) => setItemDraft({ ...itemDraft, volumeCbm: event.target.value })} required />
+              </Field>
+              <div className="readonly-metric">
+                <span>Estimated chargeable weight</span>
+                <strong>{estimatedChargeable.toFixed(2)} kg</strong>
+                <small>Higher of gross or volumetric weight.</small>
+              </div>
+            </div>
+          </div>
+
           <label className="check-row">
             <input type="checkbox" checked={itemDraft.isHazardous} onChange={(event) => setItemDraft({ ...itemDraft, isHazardous: event.target.checked })} />
-            <span>Hazardous cargo</span>
+            <span>This item contains hazardous cargo</span>
           </label>
           {itemDraft.isHazardous && (
-            <Field label="Required temp (deg C)">
-              <input type="number" min="-50" max="50" step="0.1" value={itemDraft.requiredTemperatureCelsius} onChange={(event) => setItemDraft({ ...itemDraft, requiredTemperatureCelsius: event.target.value })} />
+            <Field label="Required temperature (Celsius)" hint="Allowed range is -50 to 50 C.">
+              <input type="number" inputMode="decimal" min="-50" max="50" step="0.1" value={itemDraft.requiredTemperatureCelsius} onChange={(event) => setItemDraft({ ...itemDraft, requiredTemperatureCelsius: event.target.value })} />
             </Field>
           )}
           <div className="button-row">
-            <button className="primary-button compact" type="submit" disabled={busy}>
+            <button className="primary-button compact" type="submit" disabled={busy || hasDraftCapacityError}>
               {isEditingItem ? <CheckCircle2 size={17} /> : <Plus size={17} />}
               {isEditingItem ? "Save item" : "Add item"}
             </button>

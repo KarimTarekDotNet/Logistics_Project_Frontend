@@ -131,6 +131,7 @@
   padding: 0 34px;
   background: rgba(5, 20, 36, 0.9);
   border-bottom: 1px solid var(--border-subtle);
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
 }
 
@@ -739,6 +740,119 @@
   border-radius: var(--radius-sm);
 }
 
+.cargo-capacity-panel {
+  display: grid;
+  gap: 12px;
+  margin: 14px 0;
+  padding: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.cargo-capacity-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cargo-capacity-heading strong,
+.cargo-capacity-heading small {
+  display: block;
+}
+
+.cargo-capacity-heading small,
+.cargo-capacity-card small,
+.readonly-metric small {
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.cargo-capacity-card .cargo-capacity-preview {
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.cargo-capacity-heading > span {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.cargo-capacity-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cargo-capacity-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.cargo-capacity-card > div {
+  display: grid;
+  gap: 3px;
+}
+
+.cargo-capacity-card span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.cargo-capacity-card strong {
+  color: var(--success);
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+}
+
+.cargo-capacity-card.near-limit strong {
+  color: var(--warning);
+}
+
+.cargo-capacity-card.exceeded strong {
+  color: var(--danger);
+}
+
+.cargo-capacity-card progress {
+  width: 100%;
+  height: 7px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: var(--border-subtle);
+  color: var(--accent);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.cargo-capacity-card progress::-webkit-progress-bar {
+  background: var(--border-subtle);
+  border-radius: 999px;
+}
+
+.cargo-capacity-card progress::-webkit-progress-value {
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+.cargo-capacity-card progress::-moz-progress-bar {
+  background: var(--accent);
+  border-radius: 999px;
+}
+
 .cargo-item {
   flex-direction: column;
   align-items: stretch;
@@ -786,10 +900,37 @@
 }
 
 .cargo-form {
+  display: grid;
+  gap: 16px;
   padding: 16px;
   background: var(--bg-elevated);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-subtle);
+}
+
+.cargo-form-section {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.cargo-form-section-title strong,
+.cargo-form-section-title small {
+  display: block;
+}
+
+.cargo-form-section-title strong {
+  margin-bottom: 3px;
+  color: var(--text-primary);
+}
+
+.cargo-form-section-title small {
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
 .cargo-confirm-strip {
@@ -836,6 +977,26 @@
   color: var(--accent);
   font-family: var(--font-mono);
   font-size: 0.98rem;
+}
+
+.readonly-metric small {
+  font-size: 0.72rem;
+}
+
+@media (max-width: 900px) {
+  .cargo-capacity-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .cargo-capacity-heading {
+    flex-direction: column;
+  }
+
+  .cargo-capacity-heading > span {
+    align-self: flex-start;
+  }
 }
 
 .shipment-workflow-actions {
@@ -894,4 +1055,3 @@
   color: var(--text-secondary);
   line-height: 1.7;
 }
-

@@ -32,6 +32,10 @@ export default defineConfig(({ mode }) => {
   return {
     base: isGitHubPages ? githubPagesBase : "/",
     plugins: [react(), tailwindcss()],
+    build: {
+      target: ["es2018", "chrome87", "firefox78", "safari13"],
+      cssTarget: "safari13",
+    },
     server: {
       host: "0.0.0.0",
       proxy: {

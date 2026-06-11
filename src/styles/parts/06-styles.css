@@ -109,6 +109,7 @@
   position: fixed;
   inset: 0;
   background: rgba(1, 8, 16, 0.48);
+  -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
   display: grid;
   place-items: center;
@@ -666,6 +667,7 @@ html {
   padding: 0 40px;
   height: 58px;
   background: rgba(5, 20, 36, 0.92);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-subtle);
   gap: 24px;

@@ -61,6 +61,10 @@ export function getWorkspacePath(view: View, accountSection: AccountSection = "p
   return view === "account" ? `/app/account/${accountSection}` : `/app/${view}`;
 }
 
+export function getShipmentWorkflowPath(step?: "charges" | "invoice" | null) {
+  return step ? `/app/shipments/${step}` : getWorkspacePath("shipments");
+}
+
 export function readWorkspaceRoute(path = getAppPath()) {
   const parts = getAppPathname(path).toLowerCase().split("/").filter(Boolean);
   if (parts[0] !== "app" || !workspaceViews.has(parts[1] as View)) return null;
@@ -70,8 +74,12 @@ export function readWorkspaceRoute(path = getAppPath()) {
     view === "account" && accountSections.has(parts[2] as AccountSection)
       ? (parts[2] as AccountSection)
       : "profile";
+  const shipmentWorkflowStep =
+    view === "shipments" && (parts[2] === "charges" || parts[2] === "invoice")
+      ? (parts[2] as "charges" | "invoice")
+      : null;
 
-  return { view, accountSection };
+  return { view, accountSection, shipmentWorkflowStep };
 }
 
 export function toBrowserPath(path: string) {

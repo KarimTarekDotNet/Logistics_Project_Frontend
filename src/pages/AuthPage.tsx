@@ -275,9 +275,13 @@ export function AuthPage(props: {
                 <form className="form-stack" onSubmit={onLogin}>
                 <Field label="Email, username, or phone">
                   <input
+                    name="username"
                     value={loginForm.identity}
                     onChange={(event) => setLoginForm({ ...loginForm, identity: event.target.value.slice(0, 100) })}
                     autoComplete="username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    enterKeyHint="next"
                     placeholder="ops@company.com"
                     maxLength={100}
                     spellCheck={false}
@@ -286,9 +290,13 @@ export function AuthPage(props: {
                 </Field>
                 <Field label="Password">
                   <PasswordInput
+                    name="password"
                     value={loginForm.password}
                     onChange={(event) => setLoginForm({ ...loginForm, password: event.currentTarget.value })}
                     autoComplete="current-password"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    enterKeyHint="go"
                     placeholder="Enter password"
                     maxLength={128}
                     required

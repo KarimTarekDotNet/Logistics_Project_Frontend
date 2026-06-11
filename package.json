@@ -8,6 +8,12 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1"
   },
+  "browserslist": [
+    "Chrome >= 87",
+    "Firefox >= 78",
+    "Safari >= 13",
+    "last 2 Edge versions"
+  ],
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
     "lucide-react": "^0.468.0",
