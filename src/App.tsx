@@ -544,7 +544,6 @@ export default function App() {
   const { toasts, dismissToast, pushToast } = useToasts();
   const workspace = useShipmentWorkspace(session, setData);
   const loadSequenceRef = useRef(0);
-  const mutationInFlightRef = useRef(false);
   const pageLoadingTimerRef = useRef<number | null>(null);
   const completedConfirmationLinksRef = useRef<Set<string>>(new Set());
   const confirmationRequestsRef = useRef<Map<string, Promise<ConfirmationRequestResult>>>(new Map());
@@ -1430,9 +1429,6 @@ export default function App() {
       confirm?: boolean | ActionConfirmationOptions;
     } = {}
   ): Promise<T | null> {
-    if (mutationInFlightRef.current) return null;
-    mutationInFlightRef.current = true;
-
     let mutationStarted = false;
     try {
       if (options.confirm !== false) {
@@ -1469,7 +1465,6 @@ export default function App() {
       return null;
     } finally {
       if (mutationStarted) setBusy(false);
-      mutationInFlightRef.current = false;
     }
   }
 
