@@ -62,6 +62,385 @@
   }
 }
 
+/* Modern subscription catalog and account usage. */
+.subscription-marketing-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+  gap: clamp(22px, 4vw, 52px);
+  align-items: center;
+  padding: clamp(24px, 3.5vw, 46px);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 88% 12%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 34%),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, var(--bg-surface)), var(--bg-surface) 58%);
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border-subtle));
+  border-radius: var(--radius-xl);
+}
+
+.subscription-marketing-copy {
+  display: grid;
+  gap: 14px;
+}
+
+.subscription-marketing-copy > span {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.subscription-marketing-copy h2 {
+  max-width: 760px;
+  color: var(--text-primary);
+  font-size: clamp(1.55rem, 3vw, 2.55rem);
+  line-height: 1.12;
+}
+
+.subscription-marketing-copy p {
+  max-width: 760px;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.75;
+}
+
+.subscription-marketing-points {
+  display: grid;
+  gap: 10px;
+}
+
+.subscription-marketing-points span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--bg-elevated) 84%, transparent);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.subscription-marketing-points svg {
+  flex: 0 0 auto;
+  color: var(--success);
+}
+
+.customer-plan-catalog .subscription-plan-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 285px), 1fr));
+  align-items: stretch;
+}
+
+.customer-plan-catalog .subscription-plan-card {
+  height: 100%;
+  gap: 12px;
+  padding: clamp(20px, 2.2vw, 28px);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 5%, transparent), transparent 36%),
+    var(--bg-surface);
+}
+
+.customer-plan-catalog .subscription-plan-card > p {
+  flex: 0;
+  min-height: 3.4em;
+  font-size: 0.79rem;
+  line-height: 1.65;
+}
+
+.customer-plan-catalog .subscription-plan-card h3 {
+  font-size: 1.22rem !important;
+}
+
+.subscription-plan-offer {
+  display: grid;
+  gap: 5px;
+}
+
+.subscription-plan-old-price {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.subscription-plan-old-price del {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.subscription-plan-old-price span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 7px;
+  color: var(--success);
+  background: var(--success-bg);
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.customer-plan-catalog .subscription-plan-price strong {
+  font-size: 1.72rem;
+}
+
+.customer-plan-catalog .subscription-plan-price span,
+.customer-plan-catalog .subscription-feature-list li strong,
+.customer-plan-catalog .subscription-limit-list strong,
+.customer-plan-catalog .subscription-limit-list b {
+  font-size: 0.73rem;
+}
+
+.customer-plan-catalog .subscription-plan-benefits {
+  flex: 1;
+  align-content: start;
+}
+
+.customer-plan-catalog .subscription-feature-list {
+  gap: 7px;
+}
+
+.customer-plan-catalog .subscription-feature-list li {
+  gap: 8px;
+}
+
+.customer-plan-catalog .subscription-plan-card > button {
+  min-height: 42px;
+  font-size: 0.78rem;
+}
+
+.subscription-customer-setup-panel {
+  display: grid;
+  gap: 22px;
+  scroll-margin-top: 90px;
+}
+
+.subscription-customer-setup-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.subscription-customer-setup-head h2 {
+  margin-top: 5px;
+  color: var(--text-primary);
+  font-size: 1.25rem;
+}
+
+.subscription-customer-setup-head p {
+  max-width: 680px;
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.subscription-customer-setup-head > strong {
+  flex: 0 0 auto;
+  color: var(--text-primary);
+  font-size: 1.35rem;
+}
+
+.subscriptions-page .field > span {
+  font-size: 0.7rem;
+}
+
+.subscriptions-page .field input,
+.subscriptions-page .field select,
+.subscriptions-page .field textarea {
+  padding: 8px 10px;
+  font-size: 0.81rem;
+}
+
+.subscriptions-page .field small {
+  font-size: 0.68rem;
+}
+
+.subscription-account-section {
+  display: grid;
+  gap: 24px;
+}
+
+.subscription-account-heading {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.subscription-account-heading > button {
+  align-self: center;
+}
+
+.subscription-account-current {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: clamp(18px, 2.4vw, 28px);
+  background:
+    radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 34%),
+    var(--bg-elevated);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border-subtle));
+  border-radius: var(--radius-lg);
+}
+
+.subscription-account-current-copy {
+  display: grid;
+  gap: 9px;
+}
+
+.subscription-account-current-copy > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.subscription-account-kicker {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.67rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.subscription-account-current h3 {
+  color: var(--text-primary);
+  font-size: 1.35rem;
+}
+
+.subscription-account-current p {
+  max-width: 700px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.subscription-account-dates {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+.subscription-account-usage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.subscription-account-usage-card {
+  display: grid;
+  gap: 9px;
+  padding: 15px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.subscription-account-usage-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.subscription-account-usage-head span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.subscription-account-usage-head svg {
+  color: var(--accent);
+}
+
+.subscription-account-usage-head strong {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.73rem;
+}
+
+.subscription-account-usage-card progress {
+  width: 100%;
+  height: 6px;
+  accent-color: var(--accent);
+}
+
+.subscription-account-usage-card small,
+.subscription-account-empty-usage {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+}
+
+.subscription-account-history {
+  display: grid;
+  gap: 13px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.subscription-account-history > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.subscription-account-history > div:first-child strong {
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+
+.subscription-account-history > div:first-child small {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+@media (max-width: 900px) {
+  .subscription-marketing-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .subscription-marketing-hero {
+    padding: 22px 17px;
+  }
+
+  .subscription-marketing-copy h2 {
+    font-size: 1.55rem;
+  }
+
+  .subscription-customer-setup-head,
+  .subscription-account-current {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .subscription-account-heading {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .subscription-account-heading > button {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+}
+
 /* Requested navigation, analytics, and shipment-list refinements */
 .nav-button.active {
   background:

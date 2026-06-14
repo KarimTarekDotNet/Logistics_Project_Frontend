@@ -457,6 +457,7 @@ export default function App() {
   const [subscriptionPlansLoading, setSubscriptionPlansLoading] = useState(true);
   const [userSubscriptions, setUserSubscriptions] = useState<UserSubscription[]>([]);
   const [currentSubscriptions, setCurrentSubscriptions] = useState<UserSubscription[]>([]);
+  const [userSubscriptionsLoading, setUserSubscriptionsLoading] = useState(false);
   const [selectedSubscriptionPlanId, setSelectedSubscriptionPlanId] = useState(() => loadPendingSubscriptionPlan());
   const [pageLoading, setPageLoading] = useState(false);
   const [profilePreviewOpen, setProfilePreviewOpen] = useState(false);
@@ -464,6 +465,7 @@ export default function App() {
   const [quoteRequestDetail, setQuoteRequestDetail] = useState<QuoteRequest | null>(null);
   const [quoteRequestDetailLoading, setQuoteRequestDetailLoading] = useState(false);
   const [quoteRequestDetailError, setQuoteRequestDetailError] = useState<string | null>(null);
+  const subscriptionPlansRef = useRef<SubscriptionPlan[]>([]);
   const [authMetrics, setAuthMetrics] = useState({ publicRateCount: 0, workflowStateCount: 0 });
   const [itemUpdateReturnStep, setItemUpdateReturnStep] = useState<ShipmentWorkflowStep | null>(null);
   const [pricingMode, setPricingMode] = useState<"ratebook" | "insights">("ratebook");
@@ -806,26 +808,60 @@ export default function App() {
     if (!session?.accessToken || !isUser) {
       setUserSubscriptions([]);
       setCurrentSubscriptions([]);
-      return;
+      return { history: [] as UserSubscription[], current: [] as UserSubscription[] };
     }
 
-    const [historyResult, currentResult] = await Promise.allSettled([
-      api.getUserSubscriptions(session.accessToken),
-      api.getCurrentUserSubscriptions(session.accessToken)
-    ]);
+    setUserSubscriptionsLoading(true);
+    try {
+      const [historyResult, currentResult] = await Promise.allSettled([
+        api.getUserSubscriptions(session.accessToken),
+        api.getCurrentUserSubscriptions(session.accessToken)
+      ]);
+      const history =
+        historyResult.status === "fulfilled"
+          ? historyResult.value
+          : [];
+      const current =
+        currentResult.status === "fulfilled"
+          ? currentResult.value
+          : [];
+      const resolvedCurrent = current.length > 0
+        ? current
+        : history.filter((subscription) =>
+            subscription.isActive &&
+            new Date(subscription.endDate).getTime() > Date.now()
+          );
 
-    if (historyResult.status === "fulfilled") {
-      setUserSubscriptions(historyResult.value);
-    } else if (isNotFoundError(historyResult.reason)) {
-      setUserSubscriptions([]);
-    }
-
-    if (currentResult.status === "fulfilled") {
-      setCurrentSubscriptions(currentResult.value);
-    } else if (isNotFoundError(currentResult.reason)) {
-      setCurrentSubscriptions([]);
+      setUserSubscriptions(history);
+      setCurrentSubscriptions(resolvedCurrent);
+      return { history, current: resolvedCurrent };
+    } finally {
+      setUserSubscriptionsLoading(false);
     }
   }, [isUser, session?.accessToken]);
+
+  const waitForSubscriptionActivation = useCallback(
+    async (expectedPlanId?: string | null) => {
+      const expectedTitle = subscriptionPlansRef.current
+        .find((plan) => plan.id === expectedPlanId)
+        ?.title.trim().toLowerCase();
+
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        const result = await loadUserSubscriptionData();
+        const activated = result.current.some((subscription) => {
+          if (!subscription.isActive) return false;
+          if (!expectedTitle) return true;
+          return subscription.subscriptionPlanTitle.trim().toLowerCase() === expectedTitle;
+        });
+
+        if (activated) return true;
+        if (attempt < 5) await new Promise((resolve) => window.setTimeout(resolve, 1500));
+      }
+
+      return false;
+    },
+    [loadUserSubscriptionData]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -848,9 +884,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (activeView !== "subscriptions") return;
+    subscriptionPlansRef.current = subscriptionPlans;
+  }, [subscriptionPlans]);
+
+  useEffect(() => {
+    const isSubscriptionSettings =
+      activeView === "account" &&
+      workspaceRoute?.accountSection === "subscription";
+    if (activeView !== "subscriptions" && !isSubscriptionSettings) return;
     void loadUserSubscriptionData();
-  }, [activeView, loadUserSubscriptionData]);
+  }, [activeView, loadUserSubscriptionData, workspaceRoute?.accountSection]);
 
   useLayoutEffect(() => {
     const currentPath = getAppPath();
@@ -1323,7 +1366,9 @@ export default function App() {
         }
 
         await loadData();
-        if (isSubscriptionPayment) await loadUserSubscriptionData();
+        if (isSubscriptionPayment) {
+          await waitForSubscriptionActivation(pendingPayment?.subscriptionPlanId);
+        }
 
         if (cancelled) return;
 
@@ -1372,7 +1417,8 @@ export default function App() {
     pushToast,
     session?.accessToken,
     workspace.loadShipmentRelated,
-    workspace.setSelectedShipmentId
+    workspace.setSelectedShipmentId,
+    waitForSubscriptionActivation
   ]);
 
   const filteredRates = data.rates;
@@ -3538,14 +3584,12 @@ export default function App() {
       return (
         <SubscriptionsPage
           plans={subscriptionPlans}
-          subscriptions={userSubscriptions}
           currentSubscriptions={currentSubscriptions}
           selectedPlanId={selectedSubscriptionPlanId}
           currentCustomer={currentCustomer}
           customerDraft={customerDraft}
           setCustomerDraft={setCustomerDraft}
           isPrivileged={isPrivileged}
-          isUser={isUser}
           busy={busy}
           loading={subscriptionPlansLoading}
           language={language}
@@ -3760,6 +3804,10 @@ export default function App() {
         profile={profile}
         customers={data.customers}
         currentCustomer={currentCustomer}
+        subscriptionPlans={subscriptionPlans}
+        subscriptions={userSubscriptions}
+        currentSubscriptions={currentSubscriptions}
+        subscriptionsLoading={userSubscriptionsLoading}
         isPrivileged={isPrivileged}
         busy={busy}
         profileDraft={profileDraft}
@@ -3780,6 +3828,8 @@ export default function App() {
         onSaveCustomer={handleSaveCustomer}
         onDeleteCustomer={handleDeleteCustomer}
         onLogoutAll={handleLogoutAll}
+        onRefreshSubscriptions={() => void loadUserSubscriptionData()}
+        onBrowsePlans={() => selectWorkspaceView("subscriptions")}
       />
     );
   }

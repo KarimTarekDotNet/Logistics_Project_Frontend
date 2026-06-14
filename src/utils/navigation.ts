@@ -14,7 +14,7 @@ const workspaceViews = new Set<View>([
   "documents",
   "account"
 ]);
-const accountSections = new Set<AccountSection>(["profile", "email", "phone", "security", "customer", "language"]);
+const accountSections = new Set<AccountSection>(["profile", "email", "phone", "security", "subscription", "customer", "language"]);
 
 function readStoredSpaRedirect() {
   try {

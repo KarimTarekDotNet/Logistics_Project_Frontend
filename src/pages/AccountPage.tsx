@@ -1,7 +1,19 @@
-import { Building2, CheckCircle2, KeyRound, Languages, Mail, Phone, Send, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import { Building2, CheckCircle2, Crown, KeyRound, Languages, Mail, Phone, Send, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { SubscriptionAccountSection } from "../components/subscriptions/SubscriptionAccountSection";
 import { ConfirmDialog, Field, OtpInput, PanelTitle, PasswordInput, SectionHeader, StatusBadge } from "../components/ui";
-import type { AccountSection, AppLanguage, Customer, CustomerDraft, PasswordDraft, ProfileDraft, ProfileResponse, VerifyDraft } from "../types";
+import type {
+  AccountSection,
+  AppLanguage,
+  Customer,
+  CustomerDraft,
+  PasswordDraft,
+  ProfileDraft,
+  ProfileResponse,
+  SubscriptionPlan,
+  UserSubscription,
+  VerifyDraft
+} from "../types";
 import { formatDate, normalizeDateOnly } from "../utils/format";
 
 type DateParts = {
@@ -89,6 +101,10 @@ export function AccountPage(props: {
   profile: ProfileResponse | null;
   customers: Customer[];
   currentCustomer?: Customer;
+  subscriptionPlans: SubscriptionPlan[];
+  subscriptions: UserSubscription[];
+  currentSubscriptions: UserSubscription[];
+  subscriptionsLoading: boolean;
   isPrivileged: boolean;
   busy: boolean;
   profileDraft: ProfileDraft;
@@ -109,6 +125,8 @@ export function AccountPage(props: {
   onSaveCustomer: (event: FormEvent) => void;
   onDeleteCustomer: () => void;
   onLogoutAll: () => void;
+  onRefreshSubscriptions: () => void;
+  onBrowsePlans: () => void;
 }) {
   const {
     activeSection,
@@ -118,6 +136,10 @@ export function AccountPage(props: {
     profile,
     customers,
     currentCustomer,
+    subscriptionPlans,
+    subscriptions,
+    currentSubscriptions,
+    subscriptionsLoading,
     isPrivileged,
     busy,
     profileDraft,
@@ -137,7 +159,9 @@ export function AccountPage(props: {
     onVerifyPendingPhone,
     onSaveCustomer,
     onDeleteCustomer,
-    onLogoutAll
+    onLogoutAll,
+    onRefreshSubscriptions,
+    onBrowsePlans
   } = props;
   const [confirmCustomerDelete, setConfirmCustomerDelete] = useState(false);
   const [confirmLogoutAll, setConfirmLogoutAll] = useState(false);
@@ -180,6 +204,12 @@ export function AccountPage(props: {
           <KeyRound size={17} />
           {text("Security", "الأمان")}
         </button>
+        {!isPrivileged && (
+          <button className={activeSection === "subscription" ? "active" : ""} type="button" onClick={() => setActiveSection("subscription")}>
+            <Crown size={17} />
+            {text("Subscription", "الاشتراك")}
+          </button>
+        )}
         <button className={activeSection === "customer" ? "active" : ""} type="button" onClick={() => setActiveSection("customer")}>
           <Building2 size={17} />
           {text("Customer", "بيانات العميل")}
@@ -415,6 +445,17 @@ export function AccountPage(props: {
             </div>
           </form>
         </section>
+      )}
+
+      {activeSection === "subscription" && !isPrivileged && (
+        <SubscriptionAccountSection
+          currentSubscriptions={currentSubscriptions}
+          subscriptions={subscriptions}
+          plans={subscriptionPlans}
+          loading={subscriptionsLoading}
+          onRefresh={onRefreshSubscriptions}
+          onBrowsePlans={onBrowsePlans}
+        />
       )}
 
       {activeSection === "language" && (

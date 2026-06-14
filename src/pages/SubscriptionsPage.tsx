@@ -1,6 +1,6 @@
-import { Activity, Check, CreditCard, Crown, Pencil, Plus, Save, Trash2, UserRound } from "lucide-react";
+import { ArrowRight, BadgePercent, Check, Crown, Pencil, Plus, Save, Sparkles, Trash2, UserRound } from "lucide-react";
 import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
-import { formatSubscriptionCode, SubscriptionPlanBenefits } from "../components/subscriptions/SubscriptionPlanBenefits";
+import { SubscriptionPlanBenefits } from "../components/subscriptions/SubscriptionPlanBenefits";
 import { EmptyState, Field, LoadingSpinner, PanelTitle, SectionHeader, StatusBadge } from "../components/ui";
 import { DateOfBirthInput } from "./AccountPage";
 import type {
@@ -11,7 +11,7 @@ import type {
   SubscriptionPlan,
   UserSubscription
 } from "../types";
-import { formatMoney, formatShortDate } from "../utils/format";
+import { formatMoney } from "../utils/format";
 
 type SubscriptionFeatureDraft = {
   code: string;
@@ -141,42 +141,6 @@ function planToDraft(plan: SubscriptionPlan): PlanDraft {
     features: features.length > 0 ? features : [{ code: "", name: "" }],
     limits: limits.length > 0 ? limits : [{ code: "", maxValue: "" }]
   };
-}
-
-function SubscriptionUsage(props: { subscription: UserSubscription; plan?: SubscriptionPlan; compact?: boolean }) {
-  const usages = Array.isArray(props.subscription.usages) ? props.subscription.usages : [];
-  if (usages.length === 0) return <small className="subscription-usage-empty">No usage recorded yet.</small>;
-
-  return (
-    <div className={`subscription-usage-list ${props.compact ? "compact" : ""}`}>
-      {usages.map((usage) => {
-        const limit = props.plan?.subscriptionPlanLimitResponses?.find(
-          (item) => normalizedTitle(item.code) === normalizedTitle(usage.limitCode)
-        );
-        const usedValue = Number.isFinite(Number(usage.usedValue)) ? Number(usage.usedValue) : 0;
-        const maxValue = limit && Number.isFinite(Number(limit.maxValue)) ? Number(limit.maxValue) : 0;
-        const percent = maxValue > 0
-          ? Math.min(100, Math.max(0, (usedValue / maxValue) * 100))
-          : 0;
-
-        return (
-          <div className="subscription-usage-item" key={usage.id || usage.limitCode}>
-            <div>
-              <span>{formatSubscriptionCode(usage.limitCode)}</span>
-              <strong>
-                {usedValue.toLocaleString("en-EG")}
-                {limit ? ` / ${maxValue.toLocaleString("en-EG")}` : ""}
-              </strong>
-            </div>
-            {limit && <progress max={100} value={percent} aria-label={`${usage.limitCode} usage`} />}
-            {!props.compact && (
-              <small>{formatShortDate(usage.periodStart)} to {formatShortDate(usage.periodEnd)}</small>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
 }
 
 function PlanDraftFields(props: {
@@ -394,14 +358,12 @@ function normalizedTitle(value?: string | null) {
 
 export function SubscriptionsPage(props: {
   plans: SubscriptionPlan[];
-  subscriptions: UserSubscription[];
   currentSubscriptions: UserSubscription[];
   selectedPlanId: string;
   currentCustomer?: Customer;
   customerDraft: CustomerDraft;
   setCustomerDraft: (draft: CustomerDraft) => void;
   isPrivileged: boolean;
-  isUser: boolean;
   busy: boolean;
   loading: boolean;
   language: AppLanguage;
@@ -456,147 +418,28 @@ export function SubscriptionsPage(props: {
     }
   }
 
-  if (props.isUser && !props.currentCustomer) {
-    return (
-      <div className="view-stack subscriptions-page">
-        <SectionHeader icon={<Crown size={22} />} title="Complete your subscription" meta="Customer setup">
-          {selectedPlan && <StatusBadge status={selectedPlan.title} />}
-        </SectionHeader>
-
-        <div className="subscription-onboarding-grid">
-          <section className="panel selected-plan-summary">
-            <PanelTitle icon={<Crown size={18} />} title="Selected plan" />
-            {selectedPlan ? (
-              <>
-                <span className="subscription-step">Step 1 complete</span>
-                <h2>{selectedPlan.title}</h2>
-                <p>{selectedPlan.description}</p>
-                <strong>{formatMoney(selectedPlan.price, "EGP")}</strong>
-                <small>{selectedPlan.durationInDays} days of access</small>
-                <SubscriptionPlanBenefits plan={selectedPlan} compact />
-              </>
-            ) : (
-              <EmptyState icon={<Crown size={28} />} title="Choose a plan" description="Select a subscription after creating your customer profile." />
-            )}
-          </section>
-
-          <section className="panel">
-            <PanelTitle icon={<UserRound size={18} />} title="Create customer profile" meta="Step 2" />
-            <p className="panel-note">Choose individual or company, complete the required details, then continue directly to secure checkout.</p>
-            <form className="customer-form subscription-customer-form" onSubmit={props.onSaveCustomer}>
-              <div className="segmented inline">
-                <button
-                  type="button"
-                  className={props.customerDraft.mode === "individual" ? "active" : ""}
-                  onClick={() => props.setCustomerDraft({ ...props.customerDraft, mode: "individual", companyName: "", taxNumber: "" })}
-                >
-                  Individual
-                </button>
-                <button
-                  type="button"
-                  className={props.customerDraft.mode === "company" ? "active" : ""}
-                  onClick={() => props.setCustomerDraft({ ...props.customerDraft, mode: "company", nationalId: "" })}
-                >
-                  Company
-                </button>
-              </div>
-
-              {props.customerDraft.mode === "individual" ? (
-                <div className="form-grid">
-                  <Field label="National number">
-                    <input
-                      className="numeric-input"
-                      inputMode="numeric"
-                      value={props.customerDraft.nationalId}
-                      onChange={(event) => props.setCustomerDraft({ ...props.customerDraft, nationalId: event.target.value.replace(/\D/g, "") })}
-                      required
-                    />
-                  </Field>
-                  <Field label="Date of birth">
-                    <DateOfBirthInput
-                      value={props.customerDraft.dateOfBirth}
-                      language={props.language}
-                      onChange={(dateOfBirth) => props.setCustomerDraft({ ...props.customerDraft, dateOfBirth })}
-                    />
-                  </Field>
-                </div>
-              ) : (
-                <div className="form-grid">
-                  <Field label="Company name">
-                    <input
-                      value={props.customerDraft.companyName}
-                      onChange={(event) => props.setCustomerDraft({ ...props.customerDraft, companyName: event.target.value })}
-                      required
-                    />
-                  </Field>
-                  <Field label="Country code">
-                    <input
-                      className="latin-input"
-                      value={props.customerDraft.countryCode}
-                      onChange={(event) => props.setCustomerDraft({ ...props.customerDraft, countryCode: event.target.value.toUpperCase().slice(0, 2) })}
-                      maxLength={2}
-                      required
-                    />
-                  </Field>
-                  <Field label="Tax number">
-                    <input
-                      className="numeric-input"
-                      inputMode="numeric"
-                      value={props.customerDraft.taxNumber}
-                      onChange={(event) => props.setCustomerDraft({ ...props.customerDraft, taxNumber: event.target.value.replace(/\D/g, "") })}
-                      required
-                    />
-                  </Field>
-                  <Field label="Date of birth">
-                    <DateOfBirthInput
-                      value={props.customerDraft.dateOfBirth}
-                      language={props.language}
-                      onChange={(dateOfBirth) => props.setCustomerDraft({ ...props.customerDraft, dateOfBirth })}
-                    />
-                  </Field>
-                </div>
-              )}
-
-              <button className="primary-button" type="submit" disabled={props.busy}>
-                {props.busy ? <LoadingSpinner size="sm" /> : <CreditCard size={17} />}
-                {selectedPlan ? "Create customer and continue to payment" : "Create customer profile"}
-              </button>
-            </form>
-          </section>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="view-stack subscriptions-page">
       <SectionHeader
         icon={<Crown size={22} />}
         title={props.isPrivileged ? "Subscription plans" : "Subscriptions"}
-        meta={props.isPrivileged ? `${props.plans.length} plans` : `${props.currentSubscriptions.length} active`}
+        meta={props.isPrivileged ? `${props.plans.length} plans` : "Plans built for growing operations"}
       />
 
-      {!props.isPrivileged && props.currentSubscriptions.length > 0 && (
-        <section className="panel current-subscriptions-panel">
-          <PanelTitle icon={<Check size={18} />} title="Current subscription" meta={`${props.currentSubscriptions.length} active`} />
-          <div className="current-subscription-grid">
-            {props.currentSubscriptions.map((subscription) => {
-              const plan = props.plans.find(
-                (item) => normalizedTitle(item.title) === normalizedTitle(subscription.subscriptionPlanTitle)
-              );
-
-              return (
-                <article className="current-subscription-card" key={subscription.id}>
-                  <div className="subscription-plan-head">
-                    <StatusBadge status={subscription.isActive ? "Active" : "Inactive"} />
-                    <Activity size={17} />
-                  </div>
-                  <h3>{subscription.subscriptionPlanTitle || "Subscription plan"}</h3>
-                  <span>{formatShortDate(subscription.startDate)} to {formatShortDate(subscription.endDate)}</span>
-                  <SubscriptionUsage subscription={subscription} plan={plan} />
-                </article>
-              );
-            })}
+      {!props.isPrivileged && (
+        <section className="subscription-marketing-hero">
+          <div className="subscription-marketing-copy">
+            <span><Sparkles size={15} />One plan. A more controlled operation.</span>
+            <h2>Move from scattered logistics tasks to one connected workspace.</h2>
+            <p>
+              A FlowTix subscription unlocks the tools and operating allowances your team needs to price,
+              quote, manage shipments, organize documents, and follow financial activity with less manual work.
+            </p>
+          </div>
+          <div className="subscription-marketing-points">
+            <span><Check size={16} />Clear feature access for your workspace</span>
+            <span><Check size={16} />Usage limits tracked from your settings</span>
+            <span><Check size={16} />Secure checkout completed through Paymob</span>
           </div>
         </section>
       )}
@@ -619,8 +462,12 @@ export function SubscriptionsPage(props: {
         </section>
       )}
 
-      <section className="panel subscription-plans-panel">
-        <PanelTitle icon={<Crown size={18} />} title={props.isPrivileged ? "Manage plans" : "Available plans"} />
+      <section className={`panel subscription-plans-panel ${props.isPrivileged ? "" : "customer-plan-catalog"}`}>
+        <PanelTitle
+          icon={<Crown size={18} />}
+          title={props.isPrivileged ? "Manage plans" : "Choose the plan that fits your workflow"}
+          meta={!props.isPrivileged ? "EGP pricing · 30-day access" : undefined}
+        />
         {props.loading ? (
           <LoadingSpinner label="Loading subscriptions" />
         ) : props.plans.length === 0 ? (
@@ -662,10 +509,24 @@ export function SubscriptionsPage(props: {
                       </div>
                       <h3>{plan.title}</h3>
                       <p>{plan.description}</p>
-                      <div className="subscription-plan-price">
-                        <strong>{formatMoney(plan.price, "EGP")}</strong>
-                        <span>/ {plan.durationInDays} days</span>
-                      </div>
+                      {!props.isPrivileged && (
+                        <div className="subscription-plan-offer">
+                          <div className="subscription-plan-old-price">
+                            <del>{formatMoney(plan.price + 300, "EGP")}</del>
+                            <span><BadgePercent size={14} />Save EGP 300</span>
+                          </div>
+                          <div className="subscription-plan-price">
+                            <strong>{formatMoney(plan.price, "EGP")}</strong>
+                            <span>/ {plan.durationInDays} days</span>
+                          </div>
+                        </div>
+                      )}
+                      {props.isPrivileged && (
+                        <div className="subscription-plan-price">
+                          <strong>{formatMoney(plan.price, "EGP")}</strong>
+                          <span>/ {plan.durationInDays} days</span>
+                        </div>
+                      )}
                       <SubscriptionPlanBenefits plan={plan} />
 
                       {props.isPrivileged ? (
@@ -692,12 +553,25 @@ export function SubscriptionsPage(props: {
                           type="button"
                           onClick={() => {
                             props.onSelectPlan(plan.id);
-                            props.onStartPayment(plan);
+                            if (props.currentCustomer) {
+                              props.onStartPayment(plan);
+                            } else {
+                              window.setTimeout(() => {
+                                document.getElementById("subscription-customer-setup")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                              }, 50);
+                            }
                           }}
                           disabled={props.busy || !plan.isActive || isCurrent}
                         >
-                          {props.paymentPlanId === plan.id ? <LoadingSpinner size="sm" /> : isCurrent ? <Check size={17} /> : <CreditCard size={17} />}
-                          {props.paymentPlanId === plan.id ? "Opening checkout" : isCurrent ? "Current plan" : "Subscribe now"}
+                          {props.paymentPlanId === plan.id ? <LoadingSpinner size="sm" /> : isCurrent ? <Check size={17} /> : null}
+                          {props.paymentPlanId === plan.id
+                            ? "Opening Paymob"
+                            : isCurrent
+                              ? "Current plan"
+                              : props.currentCustomer
+                                ? `Choose ${plan.title}`
+                                : "Continue with this plan"}
+                          {!props.paymentPlanId && !isCurrent && <ArrowRight size={16} />}
                         </button>
                       )}
                     </>
@@ -709,39 +583,96 @@ export function SubscriptionsPage(props: {
         )}
       </section>
 
-      {!props.isPrivileged && props.subscriptions.length > 0 && (
-        <section className="panel subscription-history-panel">
-          <PanelTitle icon={<Crown size={18} />} title="Subscription history" meta={`${props.subscriptions.length} records`} />
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Plan</th>
-                  <th>Started</th>
-                  <th>Ends</th>
-                  <th>Usage</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {props.subscriptions.map((subscription) => {
-                  const plan = props.plans.find(
-                    (item) => normalizedTitle(item.title) === normalizedTitle(subscription.subscriptionPlanTitle)
-                  );
-
-                  return (
-                    <tr key={subscription.id}>
-                      <td data-label="Plan">{subscription.subscriptionPlanTitle || "Subscription plan"}</td>
-                      <td data-label="Started">{formatShortDate(subscription.startDate)}</td>
-                      <td data-label="Ends">{formatShortDate(subscription.endDate)}</td>
-                      <td data-label="Usage"><SubscriptionUsage subscription={subscription} plan={plan} compact /></td>
-                      <td data-label="Status"><StatusBadge status={subscription.isActive ? "Active" : "Expired"} /></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+      {!props.isPrivileged && !props.currentCustomer && selectedPlan && (
+        <section className="panel subscription-customer-setup-panel" id="subscription-customer-setup">
+          <div className="subscription-customer-setup-head">
+            <div>
+              <span className="subscription-step">Selected plan</span>
+              <h2>{selectedPlan.title}</h2>
+              <p>Create your customer profile once, then continue to Paymob to complete the subscription securely.</p>
+            </div>
+            <strong>{formatMoney(selectedPlan.price, "EGP")}</strong>
           </div>
+          <form className="customer-form subscription-customer-form" onSubmit={props.onSaveCustomer}>
+            <div className="segmented inline">
+              <button
+                type="button"
+                className={props.customerDraft.mode === "individual" ? "active" : ""}
+                onClick={() => props.setCustomerDraft({ ...props.customerDraft, mode: "individual", companyName: "", taxNumber: "" })}
+              >
+                Individual
+              </button>
+              <button
+                type="button"
+                className={props.customerDraft.mode === "company" ? "active" : ""}
+                onClick={() => props.setCustomerDraft({ ...props.customerDraft, mode: "company", nationalId: "" })}
+              >
+                Company
+              </button>
+            </div>
+
+            {props.customerDraft.mode === "individual" ? (
+              <div className="form-grid">
+                <Field label="National number">
+                  <input
+                    className="numeric-input"
+                    inputMode="numeric"
+                    value={props.customerDraft.nationalId}
+                    onChange={(event) => props.setCustomerDraft({ ...props.customerDraft, nationalId: event.target.value.replace(/\D/g, "") })}
+                    required
+                  />
+                </Field>
+                <Field label="Date of birth">
+                  <DateOfBirthInput
+                    value={props.customerDraft.dateOfBirth}
+                    language={props.language}
+                    onChange={(dateOfBirth) => props.setCustomerDraft({ ...props.customerDraft, dateOfBirth })}
+                  />
+                </Field>
+              </div>
+            ) : (
+              <div className="form-grid">
+                <Field label="Company name">
+                  <input
+                    value={props.customerDraft.companyName}
+                    onChange={(event) => props.setCustomerDraft({ ...props.customerDraft, companyName: event.target.value })}
+                    required
+                  />
+                </Field>
+                <Field label="Country code">
+                  <input
+                    className="latin-input"
+                    value={props.customerDraft.countryCode}
+                    onChange={(event) => props.setCustomerDraft({ ...props.customerDraft, countryCode: event.target.value.toUpperCase().slice(0, 2) })}
+                    maxLength={2}
+                    required
+                  />
+                </Field>
+                <Field label="Tax number">
+                  <input
+                    className="numeric-input"
+                    inputMode="numeric"
+                    value={props.customerDraft.taxNumber}
+                    onChange={(event) => props.setCustomerDraft({ ...props.customerDraft, taxNumber: event.target.value.replace(/\D/g, "") })}
+                    required
+                  />
+                </Field>
+                <Field label="Date of birth">
+                  <DateOfBirthInput
+                    value={props.customerDraft.dateOfBirth}
+                    language={props.language}
+                    onChange={(dateOfBirth) => props.setCustomerDraft({ ...props.customerDraft, dateOfBirth })}
+                  />
+                </Field>
+              </div>
+            )}
+
+            <button className="primary-button" type="submit" disabled={props.busy}>
+              {props.busy ? <LoadingSpinner size="sm" /> : <UserRound size={17} />}
+              Create profile and continue
+              {!props.busy && <ArrowRight size={16} />}
+            </button>
+          </form>
         </section>
       )}
     </div>

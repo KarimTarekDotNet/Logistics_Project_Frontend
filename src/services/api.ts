@@ -303,7 +303,15 @@ function normalizeUserSubscriptions(payload: unknown) {
 
   return subscriptions
     .map(normalizeUserSubscription)
-    .filter((subscription): subscription is UserSubscription => subscription !== null);
+    .filter((subscription): subscription is UserSubscription => {
+      if (!subscription) return false;
+      const id = subscription.id.trim().toLowerCase();
+      return Boolean(
+        id &&
+        id !== "00000000-0000-0000-0000-000000000000" &&
+        subscription.subscriptionPlanTitle.trim()
+      );
+    });
 }
 
 function resolveRequestBody(method: string, body: unknown): BodyInit | undefined {
