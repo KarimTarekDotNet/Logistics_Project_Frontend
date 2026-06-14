@@ -65,9 +65,11 @@ const roles = [
 export function PublicLandingPage(props: {
   onSignIn: () => void;
   onGetStarted: () => void;
+  onOpenDashboard?: () => void;
   theme: "light" | "dark";
   onToggleTheme: () => void;
   serverUnavailable?: boolean;
+  isAuthenticated?: boolean;
   plans: SubscriptionPlan[];
   plansLoading?: boolean;
   onSelectPlan: (planId: string) => void;
@@ -122,13 +124,22 @@ export function PublicLandingPage(props: {
           <button className="landing-nav-theme" type="button" onClick={props.onToggleTheme} aria-label="Toggle theme" title="Toggle theme">
             {props.theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
           </button>
-          <button className="ghost-button" type="button" onClick={props.onSignIn} disabled={authDisabled}>
-            Sign in
-          </button>
-          <button className="primary-button compact" type="button" onClick={props.onGetStarted} disabled={authDisabled}>
-            Get started
-            <ArrowRight size={16} />
-          </button>
+          {props.isAuthenticated ? (
+            <button className="primary-button compact landing-dashboard-button" type="button" onClick={props.onOpenDashboard}>
+              Go to dashboard
+              <ArrowRight size={16} />
+            </button>
+          ) : (
+            <>
+              <button className="ghost-button" type="button" onClick={props.onSignIn} disabled={authDisabled}>
+                Sign in
+              </button>
+              <button className="primary-button compact" type="button" onClick={props.onGetStarted} disabled={authDisabled}>
+                Get started
+                <ArrowRight size={16} />
+              </button>
+            </>
+          )}
         </div>
       </nav>
 
@@ -151,13 +162,22 @@ export function PublicLandingPage(props: {
             forwarders, logistics teams, admins, staff, customers, and automation-ready operations.
           </p>
           <div className="landing-hero-actions">
-            <button className="primary-button" type="button" onClick={props.onSignIn} disabled={authDisabled}>
-              Sign in
-            </button>
-            <button className="secondary-button" type="button" onClick={props.onGetStarted} disabled={authDisabled}>
-              Create account
-              <ArrowRight size={17} />
-            </button>
+            {props.isAuthenticated ? (
+              <button className="primary-button" type="button" onClick={props.onOpenDashboard}>
+                Go to dashboard
+                <ArrowRight size={17} />
+              </button>
+            ) : (
+              <>
+                <button className="primary-button" type="button" onClick={props.onSignIn} disabled={authDisabled}>
+                  Sign in
+                </button>
+                <button className="secondary-button" type="button" onClick={props.onGetStarted} disabled={authDisabled}>
+                  Create account
+                  <ArrowRight size={17} />
+                </button>
+              </>
+            )}
           </div>
           <div className="landing-proof">
             <span>
@@ -298,7 +318,11 @@ export function PublicLandingPage(props: {
         <div className="section-copy centered">
           <span className="landing-kicker">Subscription plans</span>
           <h2>Choose the operating plan that fits your forwarding workflow.</h2>
-          <p>Select a plan now, then sign in or create an account. Your choice stays with you through customer setup and secure payment.</p>
+          <p>
+            {props.isAuthenticated
+              ? "Choose a plan to continue through customer setup and secure Paymob checkout."
+              : "Explore the available plans, then sign in normally before continuing to customer setup and secure payment."}
+          </p>
         </div>
         {props.plansLoading ? (
           <div className="landing-plan-loading">Loading subscription plans...</div>
@@ -398,12 +422,21 @@ export function PublicLandingPage(props: {
         <span className="landing-kicker">Move forwarding work into one system</span>
         <h2>Start with a protected portal. Scale into connected logistics operations.</h2>
         <div className="landing-hero-actions">
-          <button className="primary-button" type="button" onClick={props.onSignIn} disabled={authDisabled}>
-            Sign in
-          </button>
-          <button className="secondary-button" type="button" onClick={props.onGetStarted} disabled={authDisabled}>
-            Get started
-          </button>
+          {props.isAuthenticated ? (
+            <button className="primary-button" type="button" onClick={props.onOpenDashboard}>
+              Go to dashboard
+              <ArrowRight size={17} />
+            </button>
+          ) : (
+            <>
+              <button className="primary-button" type="button" onClick={props.onSignIn} disabled={authDisabled}>
+                Sign in
+              </button>
+              <button className="secondary-button" type="button" onClick={props.onGetStarted} disabled={authDisabled}>
+                Get started
+              </button>
+            </>
+          )}
         </div>
       </section>
 

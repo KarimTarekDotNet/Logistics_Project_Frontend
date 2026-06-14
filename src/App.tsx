@@ -23,6 +23,7 @@ import { useToasts } from "./hooks/useToasts";
 import { AuthPage } from "./pages/AuthPage";
 import type { AnalyticsDraft } from "./pages/PricingPage";
 import { PublicLandingPage } from "./pages/PublicLandingPage";
+import { SubscriptionWelcomePage } from "./pages/SubscriptionWelcomePage";
 import { ApiError, api, SESSION_REFRESHED_EVENT } from "./services/api";
 import type {
   AppData,
@@ -423,6 +424,20 @@ function buildRateQuery(filters: RateBookFilterDraft): QueryParams {
   };
 }
 
+function hasPaidActiveSubscription(subscriptions: UserSubscription[], plans: SubscriptionPlan[]) {
+  return subscriptions.some((subscription) => {
+    if (!subscription.isActive) return false;
+
+    const title = subscription.subscriptionPlanTitle.trim().toLowerCase();
+    const matchingPlan = plans.find((plan) => plan.title.trim().toLowerCase() === title);
+    const isFreeTitle = title === "free" || title.startsWith("free ") || title.endsWith(" free");
+
+    if (isFreeTitle) return false;
+    if (matchingPlan) return Number(matchingPlan.price) > 0;
+    return true;
+  });
+}
+
 export default function App() {
   const [path, setPath] = useState(() => getAppPath());
   const pathname = getAppPathname(path);
@@ -458,6 +473,8 @@ export default function App() {
   const [userSubscriptions, setUserSubscriptions] = useState<UserSubscription[]>([]);
   const [currentSubscriptions, setCurrentSubscriptions] = useState<UserSubscription[]>([]);
   const [userSubscriptionsLoading, setUserSubscriptionsLoading] = useState(false);
+  const [subscriptionWelcomeReady, setSubscriptionWelcomeReady] = useState(false);
+  const [subscriptionWorkspaceAccessGranted, setSubscriptionWorkspaceAccessGranted] = useState(false);
   const [selectedSubscriptionPlanId, setSelectedSubscriptionPlanId] = useState(() => loadPendingSubscriptionPlan());
   const [pageLoading, setPageLoading] = useState(false);
   const [profilePreviewOpen, setProfilePreviewOpen] = useState(false);
@@ -927,18 +944,11 @@ export default function App() {
     }
 
     const currentPathname = getAppPathname(path).toLowerCase();
-    if (currentPathname === "/") {
-      const destination = selectedSubscriptionPlanId ? "subscriptions" : "overview";
-      setActiveView(destination);
-      if (selectedSubscriptionPlanId) {
-        navigate(getWorkspacePath(destination), { replace: true, scroll: false });
-      }
-    } else if (currentPathname.startsWith("/auth/")) {
-      const destination = selectedSubscriptionPlanId ? "subscriptions" : "overview";
-      setActiveView(destination);
-      navigate(getWorkspacePath(destination), { replace: true, scroll: false });
+    if (currentPathname.startsWith("/auth/")) {
+      setActiveView("overview");
+      navigate("/", { replace: true, scroll: false });
     }
-  }, [navigate, path, selectedSubscriptionPlanId, session]);
+  }, [navigate, path, session]);
 
   useEffect(() => {
     let cancelled = false;
@@ -963,9 +973,8 @@ export default function App() {
 
         const currentPathname = getAppPathname(path).toLowerCase();
         if (currentPathname.startsWith("/auth/")) {
-          const destination = loadPendingSubscriptionPlan() ? "subscriptions" : "overview";
-          setActiveView(destination);
-          navigate(getWorkspacePath(destination), { replace: true, scroll: false });
+          setActiveView("overview");
+          navigate("/", { replace: true, scroll: false });
         }
       } catch (error) {
         persistSession(null);
@@ -1035,6 +1044,75 @@ export default function App() {
   }, [navigate, path, serverUnavailable]);
 
   useEffect(() => {
+    if (!session || pathname.toLowerCase() !== "/subscription-offer") return;
+
+    if (!isUser || isPrivileged) {
+      setActiveView("overview");
+      navigate(getWorkspacePath("overview"), { replace: true, scroll: false });
+      return;
+    }
+
+    if (subscriptionPlansLoading) return;
+
+    let cancelled = false;
+    setSubscriptionWelcomeReady(false);
+
+    void loadUserSubscriptionData().then((result) => {
+      if (cancelled) return;
+
+      if (hasPaidActiveSubscription(result.current, subscriptionPlansRef.current)) {
+        setSubscriptionWorkspaceAccessGranted(true);
+        setActiveView("overview");
+        navigate(getWorkspacePath("overview"), { replace: true, scroll: false });
+        return;
+      }
+
+      setSubscriptionWelcomeReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPrivileged, isUser, loadUserSubscriptionData, navigate, pathname, session, subscriptionPlansLoading]);
+
+  useEffect(() => {
+    const shouldCheckWorkspaceSubscription =
+      Boolean(session && isUser && !isPrivileged && workspaceRoute) &&
+      workspaceRoute?.view !== "subscriptions" &&
+      !subscriptionPlansLoading &&
+      !subscriptionWorkspaceAccessGranted;
+
+    if (!shouldCheckWorkspaceSubscription) return;
+
+    let cancelled = false;
+
+    void loadUserSubscriptionData().then((result) => {
+      if (cancelled) return;
+
+      if (hasPaidActiveSubscription(result.current, subscriptionPlansRef.current)) {
+        setSubscriptionWorkspaceAccessGranted(true);
+        return;
+      }
+
+      setSubscriptionWelcomeReady(false);
+      navigate("/subscription-offer", { replace: true, scroll: false });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isPrivileged,
+    isUser,
+    loadUserSubscriptionData,
+    navigate,
+    session,
+    subscriptionPlansLoading,
+    subscriptionWorkspaceAccessGranted,
+    workspaceRoute?.view
+  ]);
+
+  useEffect(() => {
     function handleSessionRefresh(event: Event) {
       const nextSession = (event as CustomEvent<AuthSession | null>).detail;
 
@@ -1059,7 +1137,10 @@ export default function App() {
       closeQuoteRequestDetails();
       setProfilePreviewOpen(false);
       workspace.clearShipmentContext();
-      setActiveView(loadPendingSubscriptionPlan() ? "subscriptions" : "overview");
+      clearPendingSubscriptionPlan();
+      setSelectedSubscriptionPlanId("");
+      setSubscriptionWorkspaceAccessGranted(false);
+      setActiveView("overview");
       navigate("/auth/login", { replace: true });
       pushToast("info", "Session expired", "Please sign in again to continue.");
     }
@@ -1803,7 +1884,6 @@ export default function App() {
       }
 
       const nextSession = await resolveAuthenticatedSession(response);
-      const destination: View = selectedSubscriptionPlanId ? "subscriptions" : "overview";
       loadSequenceRef.current += 1;
       setData(initialData);
       setProfile(null);
@@ -1819,13 +1899,16 @@ export default function App() {
       closeQuoteRequestDetails();
       setProfilePreviewOpen(false);
       workspace.clearShipmentContext();
-      setActiveView(destination);
-      showPageLoading(650);
+      clearPendingSubscriptionPlan();
+      setSelectedSubscriptionPlanId("");
+      setSubscriptionWelcomeReady(false);
+      setSubscriptionWorkspaceAccessGranted(false);
+      setActiveView("overview");
       setSession(nextSession);
       persistSession(nextSession);
       clearRegistrationVerification();
       void api.prepareCsrfToken(true);
-      navigate(getWorkspacePath(destination), { replace: true });
+      navigate("/", { replace: true });
       pushToast("success", "Signed in", `Welcome back${nextSession.userName ? `, ${nextSession.userName}` : ""}.`);
     } catch (loginError) {
       if (isBackendUnavailableError(loginError)) {
@@ -2031,7 +2114,10 @@ export default function App() {
     setOnlinePaymentSubscriptionPlanId(null);
     setUserSubscriptions([]);
     setCurrentSubscriptions([]);
-    setSelectedSubscriptionPlanId(loadPendingSubscriptionPlan());
+    clearPendingSubscriptionPlan();
+    setSelectedSubscriptionPlanId("");
+    setSubscriptionWelcomeReady(false);
+    setSubscriptionWorkspaceAccessGranted(false);
     setShipmentWorkflowStep(null);
     setItemUpdateReturnStep(null);
     closeQuoteRequestDetails();
@@ -2039,6 +2125,44 @@ export default function App() {
     setActiveView("overview");
     workspace.clearShipmentContext();
     navigate("/", { replace: true });
+  }
+
+  function handleOpenDashboard() {
+    if (!session) {
+      setAuthMode("login");
+      navigate("/auth/login");
+      return;
+    }
+
+    if (isUser && !isPrivileged) {
+      setSubscriptionWelcomeReady(false);
+      setSubscriptionWorkspaceAccessGranted(false);
+      navigate("/subscription-offer");
+      return;
+    }
+
+    setActiveView("overview");
+    navigate(getWorkspacePath("overview"));
+  }
+
+  function handleSkipSubscriptionWelcome() {
+    setSubscriptionWelcomeReady(false);
+    setSubscriptionWorkspaceAccessGranted(true);
+    setActiveView("overview");
+    navigate(getWorkspacePath("overview"));
+  }
+
+  function handleChooseSubscriptionWelcomePlan(plan: SubscriptionPlan) {
+    handleSelectSubscriptionPlan(plan.id);
+    setSubscriptionWorkspaceAccessGranted(true);
+
+    if (currentCustomer) {
+      void handleStartSubscriptionPayment(plan);
+      return;
+    }
+
+    setSubscriptionWelcomeReady(false);
+    selectWorkspaceView("subscriptions");
   }
 
   async function handleLogout() {
@@ -3906,7 +4030,6 @@ export default function App() {
             publicWorkflowCount={authMetrics.workflowStateCount}
             theme={theme}
             onToggleTheme={handleToggleTheme}
-            selectedPlan={selectedSubscriptionPlan}
             onBackToLanding={() => {
               clearRegistrationVerification();
               setAuthMode("login");
@@ -3920,9 +4043,10 @@ export default function App() {
             serverUnavailable={serverUnavailable}
             plans={subscriptionPlans}
             plansLoading={subscriptionPlansLoading}
-            onSelectPlan={(planId) => {
+            onSelectPlan={() => {
               if (serverUnavailable) return;
-              handleSelectSubscriptionPlan(planId);
+              clearPendingSubscriptionPlan();
+              setSelectedSubscriptionPlanId("");
               setAuthMode("login");
               navigate("/auth/login");
             }}
@@ -3939,6 +4063,68 @@ export default function App() {
           />
         )}
         {actionConfirmationDialog}
+        <ToastHost toasts={toasts} onDismiss={dismissToast} />
+      </>
+    );
+  }
+
+  if (pathname === "/") {
+    return (
+      <>
+        <PublicLandingPage
+          isAuthenticated
+          theme={theme}
+          onToggleTheme={handleToggleTheme}
+          plans={subscriptionPlans}
+          plansLoading={subscriptionPlansLoading}
+          onOpenDashboard={handleOpenDashboard}
+          onSelectPlan={(planId) => {
+            const plan = subscriptionPlans.find((item) => item.id === planId);
+            if (plan) handleChooseSubscriptionWelcomePlan(plan);
+          }}
+          onSignIn={handleOpenDashboard}
+          onGetStarted={handleOpenDashboard}
+        />
+        {actionConfirmationDialog}
+        <ToastHost toasts={toasts} onDismiss={dismissToast} />
+      </>
+    );
+  }
+
+  if (pathname.toLowerCase() === "/subscription-offer") {
+    return (
+      <>
+        {!subscriptionWelcomeReady ? (
+          <LoadingSpinner label="Checking your subscription" size="lg" fullScreen />
+        ) : (
+          <SubscriptionWelcomePage
+            plans={subscriptionPlans}
+            plansLoading={subscriptionPlansLoading}
+            paymentPlanId={onlinePaymentSubscriptionPlanId}
+            busy={busy}
+            theme={theme}
+            onToggleTheme={handleToggleTheme}
+            onBackToLanding={() => navigate("/")}
+            onChoosePlan={handleChooseSubscriptionWelcomePlan}
+            onSkip={handleSkipSubscriptionWelcome}
+          />
+        )}
+        {actionConfirmationDialog}
+        <ToastHost toasts={toasts} onDismiss={dismissToast} />
+      </>
+    );
+  }
+
+  if (
+    isUser &&
+    !isPrivileged &&
+    workspaceRoute &&
+    workspaceRoute.view !== "subscriptions" &&
+    !subscriptionWorkspaceAccessGranted
+  ) {
+    return (
+      <>
+        <LoadingSpinner label="Checking your subscription" size="lg" fullScreen />
         <ToastHost toasts={toasts} onDismiss={dismissToast} />
       </>
     );
