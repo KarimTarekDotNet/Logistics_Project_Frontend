@@ -2,16 +2,20 @@ import { Check, Gauge } from "lucide-react";
 import type { SubscriptionPlan } from "../../types";
 
 export function formatSubscriptionCode(code: string) {
-  return code
+  return String(code ?? "")
     .replace(/[_-]+/g, " ")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/\s+/g, " ")
-    .trim();
+    .trim() || "Usage";
 }
 
 export function SubscriptionPlanBenefits(props: { plan: SubscriptionPlan; compact?: boolean }) {
-  const features = props.plan.subscriptionFeatureResponses ?? [];
-  const limits = props.plan.subscriptionPlanLimitResponses ?? [];
+  const features = Array.isArray(props.plan.subscriptionFeatureResponses)
+    ? props.plan.subscriptionFeatureResponses
+    : [];
+  const limits = Array.isArray(props.plan.subscriptionPlanLimitResponses)
+    ? props.plan.subscriptionPlanLimitResponses
+    : [];
 
   if (features.length === 0 && limits.length === 0) return null;
 
@@ -23,7 +27,7 @@ export function SubscriptionPlanBenefits(props: { plan: SubscriptionPlan; compac
             <li key={feature.id || feature.code}>
               <Check size={15} />
               <span>
-                <strong>{feature.name}</strong>
+                <strong>{feature.name || formatSubscriptionCode(feature.code)}</strong>
                 <small>{formatSubscriptionCode(feature.code)}</small>
               </span>
             </li>
@@ -36,7 +40,7 @@ export function SubscriptionPlanBenefits(props: { plan: SubscriptionPlan; compac
             <span key={limit.id || limit.code}>
               <Gauge size={14} />
               <strong>{formatSubscriptionCode(limit.code)}</strong>
-              <b>{limit.maxValue.toLocaleString("en-EG")}</b>
+              <b>{(Number.isFinite(Number(limit.maxValue)) ? Number(limit.maxValue) : 0).toLocaleString("en-EG")}</b>
             </span>
           ))}
         </div>

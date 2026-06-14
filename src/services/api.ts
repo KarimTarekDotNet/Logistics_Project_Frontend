@@ -234,13 +234,76 @@ function extractCsrfToken(payload: unknown) {
   return typeof token === "string" ? token.trim() : "";
 }
 
-function normalizeUserSubscriptions(payload: {
-  sub?: UserSubscription | UserSubscription[] | null;
-  Sub?: UserSubscription | UserSubscription[] | null;
-}) {
-  const subscriptions = payload.sub ?? payload.Sub;
-  if (!subscriptions) return [];
-  return Array.isArray(subscriptions) ? subscriptions : [subscriptions];
+function asRecord(value: unknown) {
+  return typeof value === "object" && value !== null ? value as Record<string, unknown> : null;
+}
+
+function readString(record: Record<string, unknown>, ...keys: string[]) {
+  const value = keys.map((key) => record[key]).find((item) => typeof item === "string");
+  return typeof value === "string" ? value : "";
+}
+
+function readNumber(record: Record<string, unknown>, ...keys: string[]) {
+  const value = keys.map((key) => record[key]).find((item) => item !== undefined && item !== null);
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function readBoolean(record: Record<string, unknown>, ...keys: string[]) {
+  const value = keys.map((key) => record[key]).find((item) => typeof item === "boolean");
+  return typeof value === "boolean" ? value : false;
+}
+
+function normalizeSubscriptionUsages(value: unknown) {
+  const usages = Array.isArray(value) ? value : value ? [value] : [];
+
+  return usages.flatMap((item) => {
+    const record = asRecord(item);
+    if (!record) return [];
+
+    return [{
+      id: readString(record, "id", "Id"),
+      limitCode: readString(record, "limitCode", "LimitCode"),
+      usedValue: readNumber(record, "usedValue", "UsedValue"),
+      periodStart: readString(record, "periodStart", "PeriodStart"),
+      periodEnd: readString(record, "periodEnd", "PeriodEnd")
+    }];
+  });
+}
+
+function normalizeUserSubscription(value: unknown): UserSubscription | null {
+  const record = asRecord(value);
+  if (!record) return null;
+
+  return {
+    id: readString(record, "id", "Id"),
+    username: readString(record, "username", "Username"),
+    subscriptionPlanTitle: readString(record, "subscriptionPlanTitle", "SubscriptionPlanTitle"),
+    startDate: readString(record, "startDate", "StartDate"),
+    endDate: readString(record, "endDate", "EndDate"),
+    isActive: readBoolean(record, "isActive", "IsActive"),
+    createdAt: readString(record, "createdAt", "CreatedAt"),
+    usages: normalizeSubscriptionUsages(
+      record.usages ??
+      record.Usages ??
+      record.userSubscriptionUsageResponses ??
+      record.UserSubscriptionUsageResponses
+    )
+  };
+}
+
+function normalizeUserSubscriptions(payload: unknown) {
+  const record = asRecord(payload);
+  const wrapperKey = record
+    ? ["sub", "Sub", "subscriptions", "Subscriptions", "data", "Data"]
+        .find((key) => Object.prototype.hasOwnProperty.call(record, key))
+    : undefined;
+  const source = wrapperKey && record ? record[wrapperKey] : payload;
+  const subscriptions = Array.isArray(source) ? source : source ? [source] : [];
+
+  return subscriptions
+    .map(normalizeUserSubscription)
+    .filter((subscription): subscription is UserSubscription => subscription !== null);
 }
 
 function resolveRequestBody(method: string, body: unknown): BodyInit | undefined {
@@ -847,18 +910,12 @@ export const api = {
   },
 
   async getUserSubscriptions(token: string) {
-    const payload = await request<{
-      sub?: UserSubscription | UserSubscription[] | null;
-      Sub?: UserSubscription | UserSubscription[] | null;
-    }>("/api/UserSubscription", { token });
+    const payload = await request<unknown>("/api/UserSubscription", { token });
     return normalizeUserSubscriptions(payload);
   },
 
   async getCurrentUserSubscriptions(token: string) {
-    const payload = await request<{
-      sub?: UserSubscription | UserSubscription[] | null;
-      Sub?: UserSubscription | UserSubscription[] | null;
-    }>("/api/UserSubscription/current", { token });
+    const payload = await request<unknown>("/api/UserSubscription/current", { token });
     return normalizeUserSubscriptions(payload);
   },
 

@@ -144,17 +144,19 @@ function planToDraft(plan: SubscriptionPlan): PlanDraft {
 }
 
 function SubscriptionUsage(props: { subscription: UserSubscription; plan?: SubscriptionPlan; compact?: boolean }) {
-  const usages = props.subscription.usages ?? [];
+  const usages = Array.isArray(props.subscription.usages) ? props.subscription.usages : [];
   if (usages.length === 0) return <small className="subscription-usage-empty">No usage recorded yet.</small>;
 
   return (
     <div className={`subscription-usage-list ${props.compact ? "compact" : ""}`}>
       {usages.map((usage) => {
         const limit = props.plan?.subscriptionPlanLimitResponses?.find(
-          (item) => item.code.toLowerCase() === usage.limitCode.toLowerCase()
+          (item) => normalizedTitle(item.code) === normalizedTitle(usage.limitCode)
         );
-        const percent = limit?.maxValue
-          ? Math.min(100, Math.max(0, (usage.usedValue / limit.maxValue) * 100))
+        const usedValue = Number.isFinite(Number(usage.usedValue)) ? Number(usage.usedValue) : 0;
+        const maxValue = limit && Number.isFinite(Number(limit.maxValue)) ? Number(limit.maxValue) : 0;
+        const percent = maxValue > 0
+          ? Math.min(100, Math.max(0, (usedValue / maxValue) * 100))
           : 0;
 
         return (
@@ -162,8 +164,8 @@ function SubscriptionUsage(props: { subscription: UserSubscription; plan?: Subsc
             <div>
               <span>{formatSubscriptionCode(usage.limitCode)}</span>
               <strong>
-                {usage.usedValue.toLocaleString("en-EG")}
-                {limit ? ` / ${limit.maxValue.toLocaleString("en-EG")}` : ""}
+                {usedValue.toLocaleString("en-EG")}
+                {limit ? ` / ${maxValue.toLocaleString("en-EG")}` : ""}
               </strong>
             </div>
             {limit && <progress max={100} value={percent} aria-label={`${usage.limitCode} usage`} />}
@@ -386,6 +388,10 @@ function sortPlansByPrice(plans: SubscriptionPlan[]) {
   return [...plans].sort((first, second) => first.price - second.price || first.title.localeCompare(second.title));
 }
 
+function normalizedTitle(value?: string | null) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
 export function SubscriptionsPage(props: {
   plans: SubscriptionPlan[];
   subscriptions: UserSubscription[];
@@ -414,7 +420,10 @@ export function SubscriptionsPage(props: {
   const [editErrors, setEditErrors] = useState<PlanDraftErrors>({});
   const selectedPlan = props.plans.find((plan) => plan.id === props.selectedPlanId);
   const activeTitles = new Set(
-    props.currentSubscriptions.filter((subscription) => subscription.isActive).map((subscription) => subscription.subscriptionPlanTitle.toLowerCase())
+    props.currentSubscriptions
+      .filter((subscription) => subscription.isActive)
+      .map((subscription) => normalizedTitle(subscription.subscriptionPlanTitle))
+      .filter(Boolean)
   );
   const sortedPlans = sortPlansByPrice(props.plans);
 
@@ -573,7 +582,7 @@ export function SubscriptionsPage(props: {
           <div className="current-subscription-grid">
             {props.currentSubscriptions.map((subscription) => {
               const plan = props.plans.find(
-                (item) => item.title.toLowerCase() === subscription.subscriptionPlanTitle.toLowerCase()
+                (item) => normalizedTitle(item.title) === normalizedTitle(subscription.subscriptionPlanTitle)
               );
 
               return (
@@ -582,7 +591,7 @@ export function SubscriptionsPage(props: {
                     <StatusBadge status={subscription.isActive ? "Active" : "Inactive"} />
                     <Activity size={17} />
                   </div>
-                  <h3>{subscription.subscriptionPlanTitle}</h3>
+                  <h3>{subscription.subscriptionPlanTitle || "Subscription plan"}</h3>
                   <span>{formatShortDate(subscription.startDate)} to {formatShortDate(subscription.endDate)}</span>
                   <SubscriptionUsage subscription={subscription} plan={plan} />
                 </article>
@@ -620,7 +629,7 @@ export function SubscriptionsPage(props: {
           <div className="subscription-plan-grid price-ordered-grid">
             {sortedPlans.map((plan) => {
               const isSelected = plan.id === props.selectedPlanId;
-              const isCurrent = activeTitles.has(plan.title.toLowerCase());
+              const isCurrent = activeTitles.has(normalizedTitle(plan.title));
               const isEditing = editingPlanId === plan.id;
 
               return (
@@ -717,12 +726,12 @@ export function SubscriptionsPage(props: {
               <tbody>
                 {props.subscriptions.map((subscription) => {
                   const plan = props.plans.find(
-                    (item) => item.title.toLowerCase() === subscription.subscriptionPlanTitle.toLowerCase()
+                    (item) => normalizedTitle(item.title) === normalizedTitle(subscription.subscriptionPlanTitle)
                   );
 
                   return (
                     <tr key={subscription.id}>
-                      <td data-label="Plan">{subscription.subscriptionPlanTitle}</td>
+                      <td data-label="Plan">{subscription.subscriptionPlanTitle || "Subscription plan"}</td>
                       <td data-label="Started">{formatShortDate(subscription.startDate)}</td>
                       <td data-label="Ends">{formatShortDate(subscription.endDate)}</td>
                       <td data-label="Usage"><SubscriptionUsage subscription={subscription} plan={plan} compact /></td>
