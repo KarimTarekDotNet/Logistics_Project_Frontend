@@ -1423,6 +1423,97 @@ html[dir="rtl"] .date-parts select {
   color: var(--text-muted);
 }
 
+.subscription-plan-benefits {
+  display: grid;
+  gap: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.subscription-feature-list {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.subscription-feature-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.subscription-feature-list li svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--success);
+}
+
+.subscription-feature-list li > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.subscription-feature-list li strong {
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.subscription-feature-list li small {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subscription-limit-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.subscription-limit-list > span {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.subscription-limit-list svg {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+.subscription-limit-list strong {
+  overflow: hidden;
+  font-size: 0.76rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subscription-limit-list b {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+}
+
+.selected-plan-summary .subscription-plan-benefits {
+  margin-top: 4px;
+}
+
 .landing-plan-loading,
 .landing-plan-empty {
   padding: 36px;
@@ -1483,17 +1574,84 @@ html[dir="rtl"] .date-parts select {
   gap: 16px;
 }
 
-.subscription-plan-form {
+.subscription-plan-core-fields {
+  display: grid;
   grid-template-columns: minmax(240px, 1.5fr) minmax(160px, 0.55fr) minmax(160px, 0.55fr);
+  gap: 16px;
   align-items: end;
 }
 
-.subscription-plan-form .field:nth-child(4) {
+.subscription-plan-core-fields .field:nth-child(4) {
   grid-column: 1 / -1;
 }
 
 .subscription-plan-form > button {
   justify-self: start;
+}
+
+.subscription-plan-definition-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.subscription-plan-collection {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  background: color-mix(in srgb, var(--bg-elevated) 72%, transparent);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.subscription-plan-collection-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.subscription-plan-collection-head > div {
+  display: grid;
+  gap: 4px;
+}
+
+.subscription-plan-collection-head strong {
+  color: var(--text-primary);
+}
+
+.subscription-plan-collection-head small,
+.subscription-edit-note {
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.subscription-plan-rows {
+  display: grid;
+  gap: 12px;
+}
+
+.subscription-plan-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.8fr) minmax(170px, 1.2fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.subscription-row-remove {
+  width: 38px;
+  height: 38px;
+  justify-content: center;
+  padding: 0;
+}
+
+.subscription-row-remove:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .subscription-plan-form textarea,
@@ -1517,6 +1675,11 @@ html[dir="rtl"] .date-parts select {
 
 .subscription-plan-card.inactive {
   opacity: 0.68;
+}
+
+.subscription-plan-card.editing {
+  grid-column: 1 / -1;
+  opacity: 1;
 }
 
 .subscription-plan-card > button {
@@ -1553,6 +1716,70 @@ html[dir="rtl"] .date-parts select {
   color: var(--text-muted);
 }
 
+.current-subscription-card .subscription-plan-head > svg {
+  color: var(--accent);
+}
+
+.subscription-usage-list {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.subscription-usage-item {
+  min-width: 190px;
+  display: grid;
+  gap: 6px;
+}
+
+.subscription-usage-item > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.subscription-usage-item span {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subscription-usage-item strong {
+  flex: 0 0 auto;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+}
+
+.subscription-usage-item progress {
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  accent-color: var(--accent);
+  border: 0;
+  border-radius: 999px;
+}
+
+.subscription-usage-item small,
+.subscription-usage-empty {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.subscription-usage-list.compact {
+  min-width: 220px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.subscription-usage-list.compact .subscription-usage-item {
+  min-width: 0;
+}
+
 @media (max-width: 1050px) {
   .landing-plan-grid,
   .subscription-plan-grid,
@@ -1563,18 +1790,39 @@ html[dir="rtl"] .date-parts select {
   .subscription-onboarding-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .subscription-plan-definition-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 720px) {
   .landing-plan-grid,
   .subscription-plan-grid,
   .current-subscription-grid,
-  .subscription-plan-form {
+  .subscription-plan-core-fields {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .subscription-plan-form .field:nth-child(4) {
+  .subscription-plan-core-fields .field:nth-child(4) {
     grid-column: auto;
+  }
+
+  .subscription-plan-collection-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .subscription-plan-collection-head > button {
+    justify-content: center;
+  }
+
+  .subscription-plan-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .subscription-plan-row .field:first-child {
+    grid-column: 1 / -1;
   }
 
   .landing-plan-card,

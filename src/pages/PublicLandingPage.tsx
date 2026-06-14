@@ -24,6 +24,7 @@ import { useEffect, useState } from "react";
 import { BrandLogo } from "../components/brand/BrandLogo";
 import { BRAND_NAME } from "../constants/brand";
 import type { SubscriptionPlan } from "../types";
+import { SubscriptionPlanBenefits } from "../components/subscriptions/SubscriptionPlanBenefits";
 import { formatMoney } from "../utils/format";
 
 const modules = [
@@ -311,9 +312,10 @@ export function PublicLandingPage(props: {
                 <h3>{plan.title}</h3>
                 <p>{plan.description}</p>
                 <div className="landing-plan-price">
-                  <strong>{formatMoney(plan.price)}</strong>
+                  <strong>{formatMoney(plan.price, "EGP")}</strong>
                   <span>for {plan.durationInDays} days</span>
                 </div>
+                <SubscriptionPlanBenefits plan={plan} />
                 <button className="primary-button" type="button" onClick={() => props.onSelectPlan(plan.id)} disabled={authDisabled}>
                   Choose plan
                   <ArrowRight size={16} />

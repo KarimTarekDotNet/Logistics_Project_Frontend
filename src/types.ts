@@ -398,23 +398,52 @@ export type SubscriptionPlan = {
   id: string;
   title: string;
   description: string;
+  currency: string;
   price: number;
   durationInDays: number;
   isActive: boolean;
+  subscriptionFeatureResponses: SubscriptionFeature[];
+  subscriptionPlanLimitResponses: SubscriptionPlanLimit[];
+};
+
+export type SubscriptionFeature = {
+  id: string;
+  code: string;
+  name: string;
+};
+
+export type SubscriptionPlanLimit = {
+  id: string;
+  code: string;
+  maxValue: number;
+};
+
+export type CreateSubscriptionFeature = {
+  code: string;
+  name: string;
+};
+
+export type CreateSubscriptionPlanLimit = {
+  code: string;
+  maxValue: number;
 };
 
 export type CreateSubscriptionPlanRequest = {
   title: string;
   description: string;
+  currency: "EGP";
   price: number;
   durationInDays: number;
+  createSubscriptionFeatures: CreateSubscriptionFeature[];
+  createSubscriptionPlanLimits: CreateSubscriptionPlanLimit[];
 };
 
-export type UpdateSubscriptionPlanRequest = {
-  title?: string | null;
-  description?: string | null;
-  price?: number | null;
-  durationInDays?: number | null;
+export type UserSubscriptionUsage = {
+  id: string;
+  limitCode: string;
+  usedValue: number;
+  periodStart: string;
+  periodEnd: string;
 };
 
 export type UserSubscription = {
@@ -425,6 +454,7 @@ export type UserSubscription = {
   endDate: string;
   isActive: boolean;
   createdAt: string;
+  usages: UserSubscriptionUsage[];
 };
 
 export type ShipmentDocument = {

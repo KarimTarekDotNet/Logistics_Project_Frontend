@@ -60,7 +60,6 @@ import type {
   ShipmentItemDraft,
   SubscriptionPlan,
   TrackingDraft,
-  UpdateSubscriptionPlanRequest,
   UserSubscription,
   VerificationStep,
   VerifyDraft,
@@ -3316,7 +3315,7 @@ export default function App() {
     return Boolean(plan);
   }
 
-  async function handleUpdateSubscriptionPlan(id: string, body: UpdateSubscriptionPlanRequest) {
+  async function handleUpdateSubscriptionPlan(id: string, body: CreateSubscriptionPlanRequest) {
     if (!session?.accessToken || !isPrivileged) return false;
     const plan = await runMutation(
       "Subscription plan updated",

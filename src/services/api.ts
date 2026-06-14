@@ -30,7 +30,6 @@ import type {
   StartPaymentResponse,
   SubscriptionPlan,
   TimelineItem,
-  UpdateSubscriptionPlanRequest,
   UserSubscription
 } from "../types";
 import { sessionFromAuth } from "../utils/session";
@@ -839,7 +838,7 @@ export const api = {
     return request<SubscriptionPlan>("/api/SubscriptionPlan", { method: "POST", token, body });
   },
 
-  updateSubscriptionPlan(token: string, id: string, body: UpdateSubscriptionPlanRequest) {
+  updateSubscriptionPlan(token: string, id: string, body: CreateSubscriptionPlanRequest) {
     return request<SubscriptionPlan>(`/api/SubscriptionPlan/${id}`, { method: "PUT", token, body });
   },
 
